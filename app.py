@@ -19,6 +19,7 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import re
+import json
 
 # Download required NLTK data
 @st.cache_resource
@@ -32,7 +33,7 @@ def download_nltk_data():
 
 download_nltk_data()
 
-# Custom CSS with Poppins font (applied through CSS, not through theme)
+# Custom CSS with Poppins font
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
@@ -88,47 +89,66 @@ def get_sentiment(text):
     return analysis.sentiment.polarity
 
 @st.cache_data(ttl=3600)
-def scrape_news(query, start_date):
-    # List to store results
+def brave_search(query, start_date, api_key):
+    """
+    Search using Brave's API with time filtering
+    """
     results = []
     
-    # Google News search URL
-    base_url = "https://news.google.com/rss/search"
+    headers = {
+        'X-Subscription-Token': api_key,
+        'Accept': 'application/json',
+    }
+
+    # Convert start_date to timestamp for Brave API
+    time_range_seconds = int((datetime.now() - start_date).total_seconds())
+    
     params = {
         'q': query,
-        'hl': 'en-US',
-        'gl': 'US',
-        'ceid': 'US:en'
+        'time_range': f'time_{time_range_seconds}',
+        'count': '20',  # Maximum results per request
+        'search_lang': 'en'
     }
     
     try:
-        response = requests.get(base_url, params=params)
-        soup = BeautifulSoup(response.content, 'xml')
+        response = requests.get(
+            'https://api.search.brave.com/res/v1/web/search',
+            headers=headers,
+            params=params
+        )
         
-        items = soup.find_all('item')
-        for item in items:
-            pub_date = datetime.strptime(item.pubDate.text, '%a, %d %b %Y %H:%M:%S %Z')
-            if pub_date >= start_date:
-                title = item.title.text
-                description = item.description.text
-                link = item.link.text
+        if response.status_code == 200:
+            data = response.json()
+            
+            for result in data.get('web', {}).get('results', []):
+                title = result.get('title', '')
+                description = result.get('description', '')
+                url = result.get('url', '')
+                # Convert Brave's timestamp to datetime
+                date = datetime.fromtimestamp(result.get('age', 0))
                 
                 sentiment = get_sentiment(title + " " + description)
                 
                 results.append({
                     'title': title,
                     'description': description,
-                    'link': link,
-                    'date': pub_date,
+                    'link': url,
+                    'date': date,
                     'sentiment': sentiment
                 })
+        else:
+            st.error(f"Error from Brave API: {response.status_code}")
+            
     except Exception as e:
-        st.error(f"Error scraping news: {str(e)}")
+        st.error(f"Error searching Brave: {str(e)}")
     
     return pd.DataFrame(results)
 
 @st.cache_data
 def analyze_competitors(df):
+    if df.empty:
+        return None, None, 'Neutral', 0.0
+        
     # Sentiment analysis over time
     fig_sentiment = px.line(df, x='date', y='sentiment',
                            title='Sentiment Analysis Over Time',
@@ -162,6 +182,12 @@ def analyze_competitors(df):
 def main():
     st.title("Relevant Venture Studio Competitor Analysis")
     
+    # Check for Brave API key in secrets
+    if 'brave_api_key' not in st.secrets:
+        st.error("Please add your Brave API key to the Streamlit secrets with the key 'brave_api_key'")
+        st.info("To add your API key, go to your Streamlit app settings and add it under 'Secrets' with the key 'brave_api_key'")
+        return
+        
     # Input section
     col1, col2 = st.columns(2)
     
@@ -185,8 +211,8 @@ def main():
                 # Create search query
                 search_query = f"{startup_name} {pitch}"
                 
-                # Scrape and analyze data
-                df = scrape_news(search_query, start_date)
+                # Scrape and analyze data using Brave Search
+                df = brave_search(search_query, start_date, st.secrets["brave_api_key"])
                 
                 if not df.empty:
                     # Display results
