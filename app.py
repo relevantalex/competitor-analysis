@@ -1,4 +1,12 @@
 import streamlit as st
+
+# Set page configuration FIRST
+st.set_page_config(
+    page_title="Relevant Venture Studio Competitor Analysis",
+    page_icon="📊",
+    layout="wide"
+)
+
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
@@ -24,20 +32,13 @@ def download_nltk_data():
 
 download_nltk_data()
 
-# Set page configuration
-st.set_page_config(
-    page_title="Relevant Venture Studio Competitor Analysis",
-    page_icon="📊",
-    layout="wide"
-)
-
-# Custom CSS with Poppins font
+# Custom CSS with Poppins font (applied through CSS, not through theme)
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
         
         html, body, [class*="css"] {
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins', sans-serif !important;
         }
         
         .stButton>button {
@@ -47,7 +48,11 @@ st.markdown("""
         }
         
         div[data-testid="stMarkdownContainer"] > p {
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Poppins', sans-serif !important;
+        }
+        
+        .stSelectbox > div > div > div {
+            font-family: 'Poppins', sans-serif !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -129,7 +134,6 @@ def analyze_competitors(df):
                            title='Sentiment Analysis Over Time',
                            labels={'sentiment': 'Sentiment Score', 'date': 'Date'})
     fig_sentiment.update_layout(
-        font_family="Poppins",
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)'
     )
@@ -149,7 +153,6 @@ def analyze_competitors(df):
                          title='Top Keywords in Competitor News',
                          labels={'x': 'Keywords', 'y': 'Frequency'})
     fig_wordfreq.update_layout(
-        font_family="Poppins",
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)'
     )
