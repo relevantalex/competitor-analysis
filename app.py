@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import requests
+from PIL import Image
+from io import BytesIO
 from bs4 import BeautifulSoup
 import plotly.express as px
 from datetime import datetime
@@ -214,11 +216,22 @@ def render_competitor_card(competitor: Dict):
         st.divider()
 
 def main():
-     # Add banner image at the top
-    st.image(
-        "https://drive.google.com/uc?id=16znIfqR7W_vb7QHYsRNuiyfusEMqsHy7",
-        width=None  # This allows the image to scale naturally
-    )
+     # Add banner image at the top using PIL
+    try:
+        # Fetch the image from the URL
+        response = requests.get("https://drive.google.com/uc?id=16znIfqR7W_vb7QHYsRNuiyfusEMqsHy7", stream=True)
+        response.raise_for_status()  # Raise an error for bad status codes
+        
+        # Open the image using PIL
+        img = Image.open(BytesIO(response.content))
+        
+        # Display the image using Streamlit
+        st.image(
+            img,
+            use_container_width=True
+        )
+    except Exception as e:
+        st.error(f"Error loading banner image: {str(e)}")
     
     # Header section
     st.title("📊 Relevant Competitor Analysis")
