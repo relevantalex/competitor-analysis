@@ -227,7 +227,7 @@ def main():
     
     # Add banner image at the top using PIL
     try:
-        response = requests.get("https://drive.google.com/uc?id=16znIfqR7W_vb7QHYsRNuiyfusEMqsHy7", stream=True)
+        response = requests.get("https://drive.google.com/uc?id=1Ed8JyPQzi-wkFu6KL6I7toAw4mQh064S", stream=True)
         response.raise_for_status()
         img = Image.open(BytesIO(response.content))
         st.image(img, use_container_width=True)
