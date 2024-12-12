@@ -401,6 +401,25 @@ def main():
 
     if submitted and startup_name and pitch:
         # Create tabs for industry filtering
+        tab_style = """
+            <style>
+            .stTabs [data-baseweb="tab-list"] {
+                gap: 8px;
+                border-bottom: 2px solid #E01955 !important;
+            }
+            
+            /* Button color fix */
+            .stButton > button {
+                background-color: #E01955 !important;
+            }
+            
+            .stButton > button:hover {
+                background-color: #C01745 !important;
+            }
+            </style>
+        """
+        st.markdown(tab_style, unsafe_allow_html=True)
+        
         available_industries = list(set(comp["industry"] for comp in MOCK_COMPETITORS))
         tabs = ["All"] + available_industries
         current_tab = st.tabs(tabs)
@@ -414,35 +433,36 @@ def main():
                     industry = available_industries[i-1]
                     filtered_competitors = [comp for comp in MOCK_COMPETITORS if comp["industry"] == industry]
                 
-                # Display competitors in two columns
-                col1, col2 = st.columns(2)
-                for j, competitor in enumerate(filtered_competitors):
-                    with col1 if j % 2 == 0 else col2:
-                        st.markdown(f"""
-                            <div class="competitor-card">
-                                <div class="card-header">
-                                    <h2 class="company-name">{competitor['name']}</h2>
-                                    <p class="company-industry">{competitor['industry']}</p>
-                                </div>
-                                <div class="card-content">
-                                    <p class="description-text">{competitor['description']}</p>
-                                    <div>
-                                        <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Key Differentiator</h3>
-                                        <p class="description-text" style="margin-bottom: 1rem;">{competitor['keyDifferentiator']}</p>
+                # Display competitors in two columns (grid view)
+                if filtered_competitors:
+                    col1, col2 = st.columns(2)
+                    for j, competitor in enumerate(filtered_competitors):
+                        with col1 if j % 2 == 0 else col2:
+                            st.markdown(f"""
+                                <div class="competitor-card">
+                                    <div class="card-header">
+                                        <h2 class="company-name">{competitor['name']}</h2>
+                                        <p class="company-industry">{competitor['industry']}</p>
                                     </div>
-                                    <a href="{competitor['website']}" target="_blank" class="website-link">
-                                        Visit Website
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" 
-                                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
-                                             stroke-linejoin="round" style="margin-left: 0.5rem;">
-                                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                            <polyline points="15 3 21 3 21 9"></polyline>
-                                            <line x1="10" y1="14" x2="21" y2="3"></line>
-                                        </svg>
-                                    </a>
+                                    <div class="card-content">
+                                        <p class="description-text">{competitor['description']}</p>
+                                        <div>
+                                            <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Key Differentiator</h3>
+                                            <p class="description-text" style="margin-bottom: 1rem;">{competitor['keyDifferentiator']}</p>
+                                        </div>
+                                        <a href="{competitor['website']}" target="_blank" class="website-link">
+                                            Visit Website
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" 
+                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
+                                                 stroke-linejoin="round" style="margin-left: 0.5rem;">
+                                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                                <polyline points="15 3 21 3 21 9"></polyline>
+                                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                                            </svg>
+                                        </a>
+                                    </div>
                                 </div>
-                            </div>
-                        """, unsafe_allow_html=True)
+                            """, unsafe_allow_html=True)
         
         # Display competitors
         for competitor in filtered_competitors:
