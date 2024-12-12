@@ -144,7 +144,8 @@ def clean_text(text):
 def get_sentiment(text):
     analysis = TextBlob(clean_text(text))
     return analysis.sentiment.polarity
-    @st.cache_data(ttl=3600)
+
+@st.cache_data(ttl=3600)
 def brave_search(query, time_period, api_key):
     """Search using Brave's API with time filtering"""
     results = []
@@ -286,6 +287,10 @@ def display_competitor_analysis(competitors, startup_name, pitch, industry):
     """Display competitor analysis with differentiation suggestions"""
     st.subheader("🏢 Key Competitors Analysis")
     
+    if not competitors:
+        st.warning("No direct competitors found. Try adjusting your search criteria.")
+        return
+        
     for comp in competitors:
         st.markdown(f"""
         <div class="competitor-card">
@@ -318,11 +323,11 @@ def display_sentiment_explanation(sentiment_score):
         <p>This article has a <strong>{sentiment_text}</strong> tone</p>
         <p>Sentiment scores range from -1 (very negative) to +1 (very positive):</p>
         <ul>
-            <li>🤩 0.5 to 1.0: Very Positive</li>
-            <li>😊 0.0 to 0.5: Positive</li>
-            <li>😐 0.0: Neutral</li>
-            <li>😕 -0.5 to 0.0: Negative</li>
-            <li>😢 -1.0 to -0.5: Very Negative</li>
+            <li>🤩 0.5 to 1.0: Very Positive - Strong positive sentiment, indicating enthusiasm or high praise</li>
+            <li>😊 0.0 to 0.5: Positive - Moderate positive sentiment, suggesting general approval</li>
+            <li>😐 0.0: Neutral - No clear positive or negative sentiment</li>
+            <li>😕 -0.5 to 0.0: Negative - Moderate negative sentiment, indicating concerns or criticism</li>
+            <li>😢 -1.0 to -0.5: Very Negative - Strong negative sentiment, suggesting serious issues or problems</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -370,24 +375,23 @@ def main():
                 if not df.empty:
                     st.subheader(f"Competitor Analysis Results - {selected_industry}")
                     
-                    # Extract and display competitor analysis
+                    # Extract and display competitor analysis first
                     competitors = extract_competitors(df, selected_industry)
                     display_competitor_analysis(competitors, startup_name, pitch, selected_industry)
                     
-                    # Display visualizations
+                    # Display sentiment summary with emoji
+                    st.subheader("Market Sentiment Summary")
                     fig_sentiment, fig_wordfreq, sentiment_trend, avg_sentiment = analyze_competitors(df)
+                    emoji, sentiment_text = get_sentiment_emoji(avg_sentiment)
+                    st.markdown(f"### Overall Market Sentiment: {emoji} {sentiment_text}")
+                    display_sentiment_explanation(avg_sentiment)
                     
+                    # Display visualizations
                     col1, col2 = st.columns(2)
                     with col1:
                         st.plotly_chart(fig_sentiment, use_container_width=True)
                     with col2:
                         st.plotly_chart(fig_wordfreq, use_container_width=True)
-                    
-                    # Display sentiment summary with emoji
-                    st.subheader("Market Sentiment Summary")
-                    emoji, sentiment_text = get_sentiment_emoji(avg_sentiment)
-                    st.markdown(f"### Overall Market Sentiment: {emoji} {sentiment_text}")
-                    display_sentiment_explanation(avg_sentiment)
                     
                     # Display news articles
                     st.subheader("Recent News and Developments")
@@ -399,6 +403,6 @@ def main():
                             st.write(f"Source: {row['link']}")
                 else:
                     st.warning(f"No relevant competitor information found for {selected_industry} industry in the specified time period.")
-
+                    
 if __name__ == "__main__":
     main()
