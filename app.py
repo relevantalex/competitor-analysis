@@ -15,6 +15,26 @@ from duckduckgo_search import DDGS
 import csv
 from io import StringIO
 
+# Initialize logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Configure page and theme
+st.set_page_config(
+    page_title="Venture Studio Competitor Analysis",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://github.com/yourusername/venture-studio',
+        'Report a bug': 'https://github.com/yourusername/venture-studio/issues',
+        'About': '### Venture Studio Competitor Analysis\nVersion 1.0'
+    }
+)
+
 # Initialize session state
 if 'competitors' not in st.session_state:
     st.session_state.competitors = {}
@@ -22,239 +42,6 @@ if 'industries' not in st.session_state:
     st.session_state.industries = None
 if 'current_tab' not in st.session_state:
     st.session_state.current_tab = 0
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-# Set page configuration
-st.set_page_config(
-    page_title="Venture Studio Competitor Analysis",
-    page_icon="🎯",
-    layout="wide",
-)
-
-# Improved Custom CSS with better UI/UX
-st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        /* Main theme colors - softer palette */
-        :root {
-            --background-color: #121212;
-            --card-bg: #1E1E1E;
-            --text-color: #E0E0E0;
-            --accent-color: #E53935;
-            --accent-light: #FF5252;
-            --accent-dark: #C62828;
-            --border-color: #2C2C2C;
-            --input-bg: #262626;
-        }
-
-        /* Global styles */
-        html, body, [class*="css"] {
-            font-family: 'Inter', sans-serif !important;
-            color: var(--text-color);
-            background-color: var(--background-color);
-        }
-
-        /* Streamlit containers */
-        .stApp {
-            background-color: var(--background-color);
-        }
-
-        /* Headers */
-        h1, h2, h3, h4, h5, h6 {
-            color: var(--text-color) !important;
-            font-weight: 600 !important;
-            letter-spacing: -0.02em !important;
-        }
-
-        /* Links with improved contrast */
-        a {
-            color: var(--accent-light) !important;
-            text-decoration: none !important;
-            transition: all 0.2s ease !important;
-            opacity: 0.9 !important;
-        }
-        
-        a:hover {
-            color: var(--accent-light) !important;
-            opacity: 1 !important;
-            text-decoration: none !important;
-        }
-
-        /* Improved competitor cards */
-        .competitor-card {
-            padding: 28px;
-            border-radius: 12px;
-            background-color: var(--card-bg);
-            margin: 24px 0;
-            border-left: 3px solid var(--accent-color);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-        }
-        
-        .competitor-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .competitor-card h3 {
-            margin-bottom: 16px;
-            font-size: 1.3rem;
-            color: var(--text-color) !important;
-        }
-
-        .competitor-card p {
-            margin-bottom: 12px;
-            line-height: 1.6;
-        }
-
-        /* Enhanced title container */
-        .title-container {
-            padding: 3rem 0;
-            text-align: center;
-            background: linear-gradient(135deg, #1E1E1E 0%, var(--accent-dark) 100%);
-            color: white;
-            border-radius: 0 0 24px 24px;
-            margin-bottom: 3rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .title-container h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            letter-spacing: -0.03em;
-        }
-
-        .title-container p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        /* Improved form inputs */
-        .stTextInput > div > div {
-            background-color: var(--input-bg) !important;
-            color: var(--text-color) !important;
-            border-radius: 8px !important;
-            border: 1px solid var(--border-color) !important;
-            padding: 8px 12px !important;
-            transition: all 0.2s ease !important;
-        }
-
-        .stTextInput > div > div:focus-within {
-            border-color: var(--accent-color) !important;
-            box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.2) !important;
-        }
-
-        .stTextArea > div > div {
-            background-color: var(--input-bg) !important;
-            color: var(--text-color) !important;
-            border-radius: 8px !important;
-            border: 1px solid var(--border-color) !important;
-            padding: 8px 12px !important;
-            min-height: 100px !important;
-            transition: all 0.2s ease !important;
-        }
-
-        .stTextArea > div > div:focus-within {
-            border-color: var(--accent-color) !important;
-            box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.2) !important;
-        }
-
-/* Enhanced buttons */
-        .stButton > button {
-            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-dark) 100%) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 8px !important;
-            padding: 0.6rem 1.5rem !important;
-            font-weight: 600 !important;
-            letter-spacing: 0.02em !important;
-            transition: all 0.2s ease !important;
-            text-transform: uppercase !important;
-            font-size: 0.9rem !important;
-        }
-
-        .stButton > button:hover {
-            background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent-color) 100%) !important;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(229, 57, 53, 0.2) !important;
-        }
-
-        /* Improved tabs */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 12px;
-            background-color: var(--background-color);
-            padding: 8px 0;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .stTabs [data-baseweb="tab"] {
-            background-color: var(--card-bg) !important;
-            color: var(--text-color) !important;
-            border-radius: 8px !important;
-            border: 1px solid var(--border-color) !important;
-            padding: 12px 24px !important;
-            transition: all 0.2s ease !important;
-        }
-
-        .stTabs [data-baseweb="tab"]:hover {
-            border-color: var(--accent-color) !important;
-            background-color: var(--input-bg) !important;
-        }
-
-        .stTabs [aria-selected="true"] {
-            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-dark) 100%) !important;
-            color: white !important;
-            border: none !important;
-        }
-
-        /* Progress bars and spinners */
-        .stProgress > div > div > div > div {
-            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-dark) 100%) !important;
-        }
-
-        /* Download button */
-        .stDownloadButton > button {
-            background: linear-gradient(135deg, var(--accent-dark) 0%, var(--accent-color) 100%) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 8px !important;
-            padding: 0.6rem 1.5rem !important;
-            font-weight: 600 !important;
-            letter-spacing: 0.02em !important;
-            transition: all 0.2s ease !important;
-            text-transform: uppercase !important;
-            font-size: 0.9rem !important;
-        }
-
-        .stDownloadButton > button:hover {
-            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%) !important;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(229, 57, 53, 0.2) !important;
-        }
-
-        /* Warning messages */
-        .stAlert {
-            background-color: var(--card-bg) !important;
-            color: var(--text-color) !important;
-            border: 1px solid var(--border-color) !important;
-            border-radius: 8px !important;
-        }
-
-        /* Divider */
-        hr {
-            border-color: var(--border-color) !important;
-            margin: 2rem 0 !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
 
 class AIProvider:
     def __init__(self):
@@ -324,18 +111,17 @@ def find_competitors(industry: str, pitch: str) -> List[Dict]:
     ai = AIProvider()
     
     try:
-        # First, generate a focused search query
+        # Generate search query
         search_prompt = f"""For a startup in {industry} with this pitch: "{pitch}"
         Create a search query to find direct competitors.
         Return only the search query text, nothing else."""
 
         search_query = ai.generate_response(search_prompt).strip().strip('"')
         
-        # Perform the search
+        # Perform search
         with DDGS() as ddgs:
             results = list(ddgs.text(search_query, max_results=10))
             
-            # Analyze the results with AI
             analysis_prompt = f"""Analyze these competitors in {industry}:
             {json.dumps(results)}
             
@@ -351,7 +137,6 @@ def find_competitors(industry: str, pitch: str) -> List[Dict]:
             Return ONLY the JSON array, no other text."""
 
             competitor_analysis = ai.generate_response(analysis_prompt)
-            # Clean the response to ensure it's valid JSON
             cleaned_analysis = competitor_analysis.strip()
             if not cleaned_analysis.startswith('['):
                 cleaned_analysis = cleaned_analysis[cleaned_analysis.find('['):]
@@ -406,41 +191,68 @@ def export_results(startup_name: str):
         label="📥 Export Analysis",
         data=output.getvalue(),
         file_name=f"{startup_name}_competitor_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
-        mime='text/csv'
+        mime='text/csv',
+        use_container_width=True
     )
 
+def render_competitor_card(competitor: Dict):
+    """Render a competitor analysis card using native Streamlit components"""
+    with st.container():
+        st.subheader(competitor['name'])
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.markdown("**Website**")
+            st.link_button("Visit Website", competitor['website'], use_container_width=True)
+        
+        with col2:
+            st.markdown("**Key Differentiator**")
+            st.info(competitor['differentiator'])
+        
+        st.markdown("**Description**")
+        st.text(competitor['description'])
+        st.divider()
+
 def main():
-    st.markdown("""
-        <div class="title-container">
-            <h1>Venture Studio Competitor Analysis</h1>
-            <p>Powered by AI for accurate market insights</p>
-        </div>
-    """, unsafe_allow_html=True)
+    # Header section
+    st.title("📊 Venture Studio Competitor Analysis")
+    st.caption("Powered by AI for accurate market insights")
     
-    # Input section
-    with st.form("analysis_form"):
-        startup_name = st.text_input(
-            "Startup Name",
-            help="Enter your startup's name"
-        )
+    # Input section with improved layout
+    with st.container():
+        col1, col2 = st.columns(2)
         
-        pitch = st.text_area(
-            "One-Sentence Pitch",
-            help="Describe what your startup does in one sentence",
-            max_chars=200
-        )
+        with col1:
+            startup_name = st.text_input(
+                "Startup Name",
+                help="Enter your startup's name",
+                placeholder="e.g., TechVenture Inc."
+            )
         
-        submitted = st.form_submit_button("Analyze")
+        with col2:
+            pitch = st.text_area(
+                "One-Sentence Pitch",
+                help="Describe what your startup does in one sentence",
+                max_chars=200,
+                placeholder="e.g., We provide AI-powered analytics for small businesses"
+            )
     
-    if submitted and startup_name and pitch:
-        with st.spinner("Analyzing industries..."):
+        analyze_button = st.button("🔍 Analyze Market", use_container_width=True, type="primary")
+    
+    # Analysis section
+    if analyze_button and startup_name and pitch:
+        with st.status("Analyzing market...", expanded=True) as status:
+            st.write("Identifying relevant industries...")
             st.session_state.industries = identify_industries(pitch)
             st.session_state.competitors = {}
+            status.update(label="Analysis complete!", state="complete")
             st.rerun()
 
-    # Show analysis if industries are identified
+    # Results section
     if st.session_state.industries:
-        # Create tabs
+        st.divider()
+        
+        # Create tabs for industries
         tab_titles = st.session_state.industries
         tabs = st.tabs(tab_titles)
         
@@ -451,26 +263,21 @@ def main():
                 
                 # Load competitors if not already loaded
                 if industry not in st.session_state.competitors:
-                    with st.spinner(f"Analyzing competitors in {industry}..."):
+                    with st.status(f"Analyzing competitors in {industry}...", expanded=True):
                         competitors = find_competitors(industry, pitch)
                         st.session_state.competitors[industry] = competitors
                 
-                # Display competitors
+                # Display competitors using native components
                 if industry in st.session_state.competitors:
-                    for comp in st.session_state.competitors[industry]:
-                        st.markdown(f"""
-                        <div class="competitor-card">
-                            <h3>{comp['name']}</h3>
-                            <p><strong>Website:</strong> <a href="{comp['website']}" target="_blank">{comp['website']}</a></p>
-                            <p><strong>Description:</strong> {comp['description']}</p>
-                            <p><strong>Key Differentiator:</strong> {comp['differentiator']}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    for competitor in st.session_state.competitors[industry]:
+                        render_competitor_card(competitor)
         
-        # Show export button if we have results
+        # Export section
         if st.session_state.competitors:
-            st.markdown("---")
-            export_results(startup_name)
+            st.divider()
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                export_results(startup_name)
 
 if __name__ == "__main__":
     main()
