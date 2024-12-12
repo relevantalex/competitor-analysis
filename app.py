@@ -7,12 +7,11 @@ from datetime import datetime
 from typing import List, Dict, Tuple, Optional
 import re
 import logging
-from pathlib import Path
+import json
+from urllib.parse import urlparse
 import openai
 from anthropic import Anthropic
 from duckduckgo_search import DDGS
-import json
-from urllib.parse import urlparse
 
 # Configure logging
 logging.basicConfig(
@@ -61,94 +60,108 @@ st.markdown("""
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }
         
-        .header-image {
+        .title-container {
+            padding: 2rem 0;
+            text-align: center;
+            background: linear-gradient(120deg, #155799, #159957);
+            color: white;
+            border-radius: 0 0 20px 20px;
             margin-bottom: 2rem;
         }
     </style>
 """, unsafe_allow_html=True)
 
 class AIProvider:
+    """AI Provider class to handle different AI services"""
     def __init__(self):
-        self.provider = st.secrets["api_settings"]["ai_provider"]
+        # Check which AI provider to use
+        self.provider = st.secrets.get("api_settings", {}).get("ai_provider", "openai")
+        
         if self.provider == "openai":
             openai.api_key = st.secrets["api_keys"]["openai_api_key"]
-            self.model = st.secrets["model_settings"]["openai_model"]
+            # GPT-4 Turbo is the latest model as of April 2024
+            self.model = "gpt-4-turbo-preview"
         else:
             self.anthropic = Anthropic(api_key=st.secrets["api_keys"]["anthropic_api_key"])
-            self.model = st.secrets["model_settings"]["anthropic_model"]
+            # Claude 3 Opus is the latest model as of April 2024
+            self.model = "claude-3-opus-20240229"
 
-    def generate_response(self, prompt: str) -> str:
+    async def generate_response(self, prompt: str) -> str:
+        """Generate AI response with proper error handling"""
         try:
             if self.provider == "openai":
                 response = openai.chat.completions.create(
                     model=self.model,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7
+                    messages=[
+                        {"role": "system", "content": "You are a startup and industry analysis expert."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=4000
                 )
                 return response.choices[0].message.content
             else:
                 message = self.anthropic.messages.create(
                     model=self.model,
-                    max_tokens=2000,
+                    max_tokens=4000,
                     temperature=0.7,
+                    system="You are a startup and industry analysis expert.",
                     messages=[{"role": "user", "content": prompt}]
                 )
                 return message.content
 
         except Exception as e:
             logger.error(f"AI generation failed: {str(e)}")
+            st.error("Failed to generate AI response. Please check your API settings.")
             raise
 
 @st.cache_data(ttl=3600)
 def identify_industries(pitch: str) -> List[str]:
     """Identify potential industries based on the pitch using AI"""
     ai = AIProvider()
-    prompt = f"""Given this startup pitch: "{pitch}"
-    Identify the top 3 most relevant industries for this startup. 
-    Consider both traditional industry categories and modern technology sectors.
-    Return ONLY a JSON array of 3 industry names, nothing else.
-    Example: ["AI Healthcare", "Medical Devices", "Digital Therapeutics"]"""
+    prompt = f"""Analyze this startup pitch and identify the 3 most relevant industries: "{pitch}"
+    Focus on specific, modern industry categories.
+    Return only a JSON array of 3 industry names, no other text.
+    Example format: ["FinTech - Payment Processing", "B2B SaaS", "Financial Services"]
+    Make industries specific and actionable."""
 
     try:
         response = ai.generate_response(prompt)
         industries = json.loads(response)
-        return industries[:3]  # Ensure we only get 3 industries
+        return industries[:3]
     except Exception as e:
         logger.error(f"Industry identification failed: {str(e)}")
-        return ["Technology", "Software", "Digital Services"]  # Fallback industries
+        return ["Technology", "Software", "Digital Services"]
 
 @st.cache_data(ttl=3600)
 def find_competitors(industry: str, pitch: str) -> List[Dict]:
     """Find competitors using AI and web search"""
     ai = AIProvider()
     
-    # First, use AI to understand what to search for
-    search_prompt = f"""Given this startup pitch: "{pitch}" in the {industry} industry,
-    generate a specific search query to find direct competitors.
-    Focus on identifying companies solving similar problems.
-    Return ONLY the search query, nothing else."""
+    search_prompt = f"""Create a precise search query to find direct competitors based on:
+    Industry: {industry}
+    Pitch: "{pitch}"
+    Focus on companies solving similar problems.
+    Return only the search query, no other text."""
 
     try:
         search_query = ai.generate_response(search_prompt)
         
-        # Use DuckDuckGo for search (more reliable than Brave for this use case)
         competitors = []
         with DDGS() as ddgs:
             results = list(ddgs.text(search_query, max_results=10))
             
-            # Use AI to analyze search results and identify real competitors
-            analysis_prompt = f"""Given these search results for competitors in {industry}:
-            {json.dumps(results)}
+            analysis_prompt = f"""Analyze these search results and identify the 3 most relevant direct competitors in {industry}.
+            Search results: {json.dumps(results)}
             
-            Identify the top 3 most relevant direct competitors.
-            For each competitor, provide:
-            1. Company name
-            2. Website (extract from the search results)
-            3. Brief description of what they do
-            4. Key differentiator
+            For each competitor provide:
+            - Company name (only the actual company name)
+            - Website (main company website only)
+            - Brief, specific description (max 2 sentences)
+            - Key differentiator (one specific unique selling point)
             
-            Return the response as a JSON array with these exact keys:
-            name, website, description, differentiator"""
+            Return as JSON array with keys: name, website, description, differentiator
+            Ensure websites are clean, valid URLs."""
 
             competitor_analysis = ai.generate_response(analysis_prompt)
             competitors = json.loads(competitor_analysis)
@@ -156,23 +169,26 @@ def find_competitors(industry: str, pitch: str) -> List[Dict]:
             # Clean and validate URLs
             for comp in competitors:
                 if comp.get('website'):
-                    domain = urlparse(comp['website']).netloc
+                    parsed_url = urlparse(comp['website'])
+                    domain = parsed_url.netloc if parsed_url.netloc else parsed_url.path
                     if not domain.startswith('www.'):
-                        comp['website'] = f"https://www.{domain}"
-                    elif not comp['website'].startswith('http'):
-                        comp['website'] = f"https://{domain}"
+                        domain = f"www.{domain}"
+                    comp['website'] = f"https://{domain}"
             
-            return competitors[:3]  # Ensure we only get 3 competitors
+            return competitors[:3]
             
     except Exception as e:
         logger.error(f"Competitor search failed: {str(e)}")
         return []
 
 def main():
-    # Display header image
-    st.image("header_image.png", use_column_width=True, caption=None)
-    
-    st.title("Venture Studio Competitor Analysis")
+    # Custom title section with gradient background
+    st.markdown("""
+        <div class="title-container">
+            <h1>Venture Studio Competitor Analysis</h1>
+            <p>Powered by AI for accurate market insights</p>
+        </div>
+    """, unsafe_allow_html=True)
     
     # Input section
     with st.form("analysis_form"):
@@ -192,13 +208,11 @@ def main():
     if submitted and startup_name and pitch:
         with st.spinner("Analyzing your startup..."):
             try:
-                # Identify industries
                 industries = identify_industries(pitch)
                 
                 st.subheader("🎯 Select Your Industry")
                 st.write("Based on your pitch, these are the most relevant industries:")
                 
-                # Create columns for industry buttons
                 cols = st.columns(3)
                 selected_industry = None
                 
@@ -207,7 +221,6 @@ def main():
                         if st.button(f"📊 {industry}", use_container_width=True):
                             selected_industry = industry
                 
-                # If an industry is selected, show competitor analysis
                 if selected_industry:
                     with st.spinner(f"Finding competitors in {selected_industry}..."):
                         competitors = find_competitors(selected_industry, pitch)
@@ -227,7 +240,7 @@ def main():
 
             except Exception as e:
                 logger.error(f"Analysis failed: {str(e)}")
-                st.error("An error occurred during analysis. Please try again.")
+                st.error("An error occurred during analysis. Please check your API settings and try again.")
 
 if __name__ == "__main__":
     main()
