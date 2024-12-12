@@ -106,6 +106,27 @@ st.markdown("""
             transform: translateY(-1px);
         }
         
+        /* Update heading hierarchy */
+        .competitor-name {
+            font-size: 2rem !important;
+            font-weight: 700 !important;
+            margin-bottom: 1.5rem !important;
+        }
+        
+        .section-title {
+            font-size: 1.5rem !important;
+            font-weight: 600 !important;
+            margin-bottom: 1rem !important;
+            color: #1f2937;
+        }
+        
+        .subsection-title {
+            font-size: 1.25rem !important;
+            font-weight: 600 !important;
+            margin-bottom: 0.5rem !important;
+            color: #374151;
+        }
+        
         .competitor-card {
             background: white;
             border-radius: 12px;
@@ -140,7 +161,10 @@ st.markdown("""
 # Header with logo
 st.markdown("""
     <div class="header-container">
-        <h1>Relevant Venture Studio Competitor Analysis</h1>
+        <img src="https://drive.google.com/uc?id=1JmN239NqwH1KOJJUWtjcr7dU6zn1Auh4" 
+             alt="Company Logo" 
+             class="header-image">
+        <h1>Venture Studio Competitor Analysis</h1>
     </div>
 """, unsafe_allow_html=True)
 
@@ -301,7 +325,7 @@ def main():
                 placeholder="e.g., AI-powered analytics platform for retail optimization"
             )
         
-        submitted = st.form_submit_button("Analyze Market")
+        submitted = st.form_submit_button("Analyze Market", use_container_width=True)
     
     if submitted and startup_name and pitch:
         with st.spinner("Analyzing industries..."):
@@ -326,7 +350,7 @@ def main():
                         st.markdown(f"""
                         <div class="competitor-card">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600;">{comp['name']}</h3>
+                                <h1 class="competitor-name">{comp['name']}</h1>
                                 <a href="{comp['website']}" target="_blank" class="website-link">
                                     Visit Website
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -337,11 +361,11 @@ def main():
                                 </a>
                             </div>
                             <div style="margin-bottom: 16px;">
-                                <h4 style="font-weight: 600; margin-bottom: 4px;">Description</h4>
+                                <h2 class="section-title">Description</h2>
                                 <p style="color: #64748b; margin: 0;">{comp['description']}</p>
                             </div>
                             <div>
-                                <h4 style="font-weight: 600; margin-bottom: 4px;">Key Differentiator</h4>
+                                <h3 class="subsection-title">Key Differentiator</h3>
                                 <p style="color: #64748b; margin: 0;">{comp['differentiator']}</p>
                             </div>
                         </div>
