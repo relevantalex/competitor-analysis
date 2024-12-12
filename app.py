@@ -141,42 +141,61 @@ st.markdown("""
             line-height: 1.5;
         }
         
-        /* Override multiselect styles */
-        .stMultiSelect > div[data-baseweb="select"] > div {
+        /* Form field styling */
+        .stTextInput > div:hover,
+        .stTextArea > div:hover {
+            border-color: #E01955 !important;
+        }
+        
+        .stTextInput > div > div > input:focus,
+        .stTextArea > div > div > textarea:focus {
+            border-color: #E01955 !important;
+            box-shadow: 0 0 0 1px #E01955 !important;
+        }
+        
+        /* Form icons (dropdown and clear) */
+        .stTextInput [data-baseweb="icon"],
+        .stSelectbox [data-baseweb="icon"] {
+            color: #000000 !important;
+        }
+        
+        /* Analyze Market button hover */
+        .stButton > button:hover {
             background-color: #E01955 !important;
-            color: white !important;
+            opacity: 0.9;
         }
         
-        .stMultiSelect div[role="option"]:hover {
-            background-color: rgba(224, 25, 85, 0.1) !important;
-            color: #E01955 !important;
-        }
-        
-        .stMultiSelect [data-testid="stMultiSelect"] div[role="option"][data-highlighted="true"] {
-            background-color: rgba(224, 25, 85, 0.1) !important;
-            color: #E01955 !important;
-        }
-        
-        .stMultiSelect [data-baseweb="tag"] {
-            background-color: #E01955 !important;
-            color: white !important;
-        }
-        
-        .stMultiSelect [data-baseweb="tag"]:hover {
-            background-color: #C01745 !important;
-        }
-        
-        .stMultiSelect [data-baseweb="icon"] {
-            color: white !important;
-        }
-        
-        /* Override any remaining green focus/selection colors */
+        /* Override any remaining focus/selection colors */
         *:focus {
             outline-color: #E01955 !important;
         }
         
         *::selection {
             background-color: rgba(224, 25, 85, 0.2) !important;
+        }
+        
+        /* Tab styling */
+        .stTabs [data-baseweb="tab"] {
+            height: 50px;
+            white-space: pre-wrap;
+            border-radius: 4px;
+            margin: 4px;
+        }
+        
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+            background-color: #E01955 !important;
+            color: white !important;
+            border-color: #E01955 !important;
+        }
+        
+        .stTabs [data-baseweb="tab"]:hover {
+            background-color: rgba(224, 25, 85, 0.1) !important;
+            color: #E01955 !important;
         }
         
         /* Tabs styling */
@@ -327,26 +346,32 @@ def main():
         submitted = st.form_submit_button("Analyze Market")
 
     if submitted and startup_name and pitch:
-        # Industry filter with multiselect that maintains state
-        available_industries = list(set(comp["industry"] for comp in MOCK_COMPETITORS))
-        if 'selected_industries' not in st.session_state:
-            st.session_state.selected_industries = available_industries
-            
-        selected_industries = st.multiselect(
-            "Filter by Industry",
-            available_industries,
-            default=st.session_state.selected_industries,
-            help="Select industries to filter (you can select multiple)"
-        )
+        # Create tabs for filtering
+        tab_cols = st.columns(2)
+        with tab_cols[0]:
+            col1_tabs = st.tabs(["All", "Restaurant Management"])
+        with tab_cols[1]:
+            col2_tabs = st.tabs(["Hospitality Security", "Food Service Analytics"])
         
-        # Update session state
-        st.session_state.selected_industries = selected_industries if selected_industries else available_industries
+        # Get the active tab index
+        if 'active_tab' not in st.session_state:
+            st.session_state.active_tab = 0
         
-        # Display filtered competitors
-        filtered_competitors = [
-            comp for comp in MOCK_COMPETITORS 
-            if comp["industry"] in (selected_industries if selected_industries else available_industries)
-        ]
+        # Define tab indices
+        all_tab = col1_tabs[0]
+        restaurant_tab = col1_tabs[1]
+        security_tab = col2_tabs[0]
+        analytics_tab = col2_tabs[1]
+        
+        # Filter competitors based on active tab
+        with all_tab:
+            filtered_competitors = MOCK_COMPETITORS
+        with restaurant_tab:
+            filtered_competitors = [comp for comp in MOCK_COMPETITORS if comp["industry"] == "Restaurant Management Solutions"]
+        with security_tab:
+            filtered_competitors = [comp for comp in MOCK_COMPETITORS if comp["industry"] == "Hospitality Security Systems"]
+        with analytics_tab:
+            filtered_competitors = [comp for comp in MOCK_COMPETITORS if comp["industry"] == "Food Service Analytics"]
         
         # Display competitors
         for competitor in filtered_competitors:
