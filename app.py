@@ -217,7 +217,8 @@ def main():
     # Add image at the top
     st.image(
         "https://drive.google.com/uc?id=16znIfqR7W_vb7QHYsRNuiyfusEMqsHy7",
-        use_column_width=True
+        use_container_width=True,
+        caption=None  # Remove caption if you don't need one for the image
     )
 
     # Header section
