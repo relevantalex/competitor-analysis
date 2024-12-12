@@ -33,6 +33,16 @@ st.set_page_config(
     layout="wide",
 )
 
+# Define regions
+REGIONS = {
+    "Worldwide": "Global market analysis",
+    "North America": ["United States", "Canada"],
+    "Europe": ["European Union", "United Kingdom", "Switzerland"],
+    "Asia Pacific": ["China", "Japan", "South Korea", "Singapore"],
+    "Latin America": ["Brazil", "Mexico", "Argentina"],
+    "Middle East & Africa": ["UAE", "Saudi Arabia", "South Africa"],
+}
+
 # Modern UI styling
 st.markdown("""
     <style>
@@ -59,7 +69,6 @@ st.markdown("""
             margin-right: 2rem;
         }
         
-        /* Form styling */
         .stTextInput > div > div > input {
             border-radius: 8px;
             border: 1px solid #e2e8f0;
@@ -125,27 +134,13 @@ st.markdown("""
             color: #B01535;
             text-decoration: underline;
         }
-        
-        .export-button {
-            background-color: white !important;
-            color: #E01955 !important;
-            border: 1px solid #E01955 !important;
-        }
-        
-        .export-button:hover {
-            background-color: #E01955 !important;
-            color: white !important;
-        }
     </style>
 """, unsafe_allow_html=True)
 
 # Header with logo
 st.markdown("""
     <div class="header-container">
-        <img src="https://drive.google.com/uc?id=1JmN239NqwH1KOJJUWtjcr7dU6zn1Auh4" 
-             alt="Company Logo" 
-             class="header-image">
-        <h1>Venture Studio Competitor Analysis</h1>
+        <h1>Relevant Venture Studio Competitor Analysis</h1>
     </div>
 """, unsafe_allow_html=True)
 
