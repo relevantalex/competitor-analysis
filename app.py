@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # Configure page and theme
 st.set_page_config(
-    page_title="Venture Studio Competitor Analysis",
+    page_title="Competitor Analysis",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -215,8 +215,8 @@ def render_competitor_card(competitor: Dict):
 
 def main():
     # Header section
-    st.title("📊 Venture Studio Competitor Analysis")
-    st.caption("Powered by AI for accurate market insights")
+    st.title("📊 Relevant Competitor Analysis")
+    st.caption("Market insights with Relevant Venture Studio")
     
     # Input section with improved layout
     with st.container():
