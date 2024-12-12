@@ -21,12 +21,11 @@ st.set_page_config(
 )
 
 # Configure API clients
-if not all(key in st.secrets for key in ["openai_api_key", "anthropic_api_key", "brave_api_key"]):
+if not all(key in st.secrets for key in ["openai_api_key", "brave_api_key"]):
     st.error("⚠️ Missing required API keys in Streamlit secrets")
     st.info("""
     Please add the following keys in your Streamlit Cloud settings:
     - `openai_api_key` (for GPT-4)
-    - `anthropic_api_key` (for Claude)
     - `brave_api_key` (for web search)
     
     You can set these in your Streamlit Cloud dashboard under:
@@ -35,9 +34,7 @@ if not all(key in st.secrets for key in ["openai_api_key", "anthropic_api_key", 
     st.stop()
 
 openai.api_key = st.secrets["openai_api_key"]
-claude = anthropic.Client(api_key=st.secrets["anthropic_api_key"])
 BRAVE_API_KEY = st.secrets["brave_api_key"]
-AI_MODEL = st.secrets.get("ai_model", "gpt-4")  # Default to GPT-4 if not specified
 
 # Custom CSS with Poppins font
 st.markdown("""
