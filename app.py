@@ -2,17 +2,17 @@ import streamlit as st
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from textblob import TextBlob
 import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime
 from typing import List, Dict, Tuple, Optional
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
 import re
 import logging
 from pathlib import Path
+import openai
+from anthropic import Anthropic
+from duckduckgo_search import DDGS
+import json
+from urllib.parse import urlparse
 
 # Configure logging
 logging.basicConfig(
@@ -26,205 +26,208 @@ st.set_page_config(
     page_title="Venture Studio Competitor Analysis",
     page_icon="📊",
     layout="wide",
-    menu_items={
-        'Get Help': 'https://github.com/yourusername/competitor-analysis',
-        'Report a bug': "https://github.com/yourusername/competitor-analysis/issues",
-        'About': "Competitor Analysis Tool v1.0"
-    }
 )
 
-# Initialize session state
-if 'search_history' not in st.session_state:
-    st.session_state.search_history = []
+# Custom CSS with modern styling
+st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        html, body, [class*="css"] {
+            font-family: 'Inter', sans-serif !important;
+        }
+        
+        .stButton>button {
+            background-color: #4CAF50 !important;
+            color: white !important;
+            font-family: 'Inter', sans-serif !important;
+            border-radius: 8px !important;
+            transition: all 0.3s ease;
+            height: 60px !important;
+            font-size: 16px !important;
+        }
+        
+        .stButton>button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+        }
+        
+        .competitor-card {
+            padding: 24px;
+            border-radius: 12px;
+            background-color: #ffffff;
+            margin: 16px 0;
+            border-left: 5px solid #4CAF50;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .header-image {
+            margin-bottom: 2rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-def get_brave_time_range(period: str) -> Optional[str]:
-    """Convert time period to Brave API format"""
-    time_ranges = {
-        "Last Month": "past_month",
-        "Last 3 Months": "past_3_months",
-        "Last 6 Months": "past_6_months",
-        "Last Year": "past_year"
-    }
-    return time_ranges.get(period)
+class AIProvider:
+    def __init__(self):
+        self.provider = st.secrets["api_settings"]["ai_provider"]
+        if self.provider == "openai":
+            openai.api_key = st.secrets["api_keys"]["openai_api_key"]
+            self.model = st.secrets["model_settings"]["openai_model"]
+        else:
+            self.anthropic = Anthropic(api_key=st.secrets["api_keys"]["anthropic_api_key"])
+            self.model = st.secrets["model_settings"]["anthropic_model"]
 
-@st.cache_resource
-def initialize_nltk():
-    """Initialize NLTK resources safely"""
-    try:
-        nltk.data.find('tokenizers/punkt')
-        nltk.data.find('corpora/stopwords')
-    except LookupError:
+    def generate_response(self, prompt: str) -> str:
         try:
-            nltk.download('punkt', quiet=True)
-            nltk.download('stopwords', quiet=True)
-        except Exception as e:
-            logger.error(f"Failed to download NLTK data: {e}")
-            st.error("Failed to initialize text analysis tools. Please try again later.")
-            return False
-    return True
+            if self.provider == "openai":
+                response = openai.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7
+                )
+                return response.choices[0].message.content
+            else:
+                message = self.anthropic.messages.create(
+                    model=self.model,
+                    max_tokens=2000,
+                    temperature=0.7,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                return message.content
 
-@st.cache_data
-def clean_text(text: str) -> str:
-    """Clean and normalize text"""
-    text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
-    text = re.sub(r'[^\w\s]', '', text)
-    return text.lower().strip()
+        except Exception as e:
+            logger.error(f"AI generation failed: {str(e)}")
+            raise
 
 @st.cache_data(ttl=3600)
-def brave_search(query: str, time_period: str, api_key: str) -> pd.DataFrame:
-    """
-    Perform a search using Brave's API with improved error handling
-    """
-    headers = {
-        'X-Subscription-Token': api_key,
-        'Accept': 'application/json',
-    }
-    
-    time_range = get_brave_time_range(time_period)
-    params = {
-        'q': query,
-        'count': '20'
-    }
-    
-    if time_range:
-        params['time_range'] = time_range
-    
-    try:
-        with st.spinner('Searching for competitor data...'):
-            response = requests.get(
-                'https://api.search.brave.com/res/v1/web/search',
-                headers=headers,
-                params=params,
-                timeout=10
-            )
-            
-        response.raise_for_status()
-        data = response.json()
-        
-        results = []
-        for result in data.get('web', {}).get('results', []):
-            results.append({
-                'title': result.get('title', ''),
-                'description': result.get('description', ''),
-                'link': result.get('url', ''),
-                'date': datetime.now(),
-                'sentiment': get_sentiment(f"{result.get('title', '')} {result.get('description', '')}")
-            })
-            
-        return pd.DataFrame(results)
-    
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Brave API request failed: {str(e)}")
-        st.error("Failed to fetch competitor data. Please try again later.")
-        return pd.DataFrame()
+def identify_industries(pitch: str) -> List[str]:
+    """Identify potential industries based on the pitch using AI"""
+    ai = AIProvider()
+    prompt = f"""Given this startup pitch: "{pitch}"
+    Identify the top 3 most relevant industries for this startup. 
+    Consider both traditional industry categories and modern technology sectors.
+    Return ONLY a JSON array of 3 industry names, nothing else.
+    Example: ["AI Healthcare", "Medical Devices", "Digital Therapeutics"]"""
 
-@st.cache_data
-def get_sentiment(text: str) -> float:
-    """Calculate sentiment score for text"""
     try:
-        analysis = TextBlob(clean_text(text))
-        return analysis.sentiment.polarity
+        response = ai.generate_response(prompt)
+        industries = json.loads(response)
+        return industries[:3]  # Ensure we only get 3 industries
     except Exception as e:
-        logger.error(f"Sentiment analysis failed: {str(e)}")
-        return 0.0
+        logger.error(f"Industry identification failed: {str(e)}")
+        return ["Technology", "Software", "Digital Services"]  # Fallback industries
 
-def display_analysis_results(df: pd.DataFrame, startup_name: str):
-    """Display analysis results with visualizations"""
-    if df.empty:
-        st.warning("No data available for analysis.")
-        return
+@st.cache_data(ttl=3600)
+def find_competitors(industry: str, pitch: str) -> List[Dict]:
+    """Find competitors using AI and web search"""
+    ai = AIProvider()
+    
+    # First, use AI to understand what to search for
+    search_prompt = f"""Given this startup pitch: "{pitch}" in the {industry} industry,
+    generate a specific search query to find direct competitors.
+    Focus on identifying companies solving similar problems.
+    Return ONLY the search query, nothing else."""
 
-    # Sentiment Analysis
-    avg_sentiment = df['sentiment'].mean()
-    st.subheader("📊 Sentiment Analysis")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        fig_sentiment = px.line(df, 
-                              x=df.index, 
-                              y='sentiment',
-                              title='Sentiment Trend',
-                              labels={'sentiment': 'Sentiment Score', 'index': 'Article Number'})
-        st.plotly_chart(fig_sentiment)
-    
-    with col2:
-        sentiment_dist = px.histogram(df, 
-                                    x='sentiment',
-                                    title='Sentiment Distribution',
-                                    nbins=20)
-        st.plotly_chart(sentiment_dist)
+    try:
+        search_query = ai.generate_response(search_prompt)
+        
+        # Use DuckDuckGo for search (more reliable than Brave for this use case)
+        competitors = []
+        with DDGS() as ddgs:
+            results = list(ddgs.text(search_query, max_results=10))
+            
+            # Use AI to analyze search results and identify real competitors
+            analysis_prompt = f"""Given these search results for competitors in {industry}:
+            {json.dumps(results)}
+            
+            Identify the top 3 most relevant direct competitors.
+            For each competitor, provide:
+            1. Company name
+            2. Website (extract from the search results)
+            3. Brief description of what they do
+            4. Key differentiator
+            
+            Return the response as a JSON array with these exact keys:
+            name, website, description, differentiator"""
 
-    # Display Results Table
-    st.subheader("📑 Detailed Results")
-    st.dataframe(
-        df[['title', 'sentiment', 'link']].style.format({
-            'sentiment': '{:.2f}'
-        })
-    )
+            competitor_analysis = ai.generate_response(analysis_prompt)
+            competitors = json.loads(competitor_analysis)
+            
+            # Clean and validate URLs
+            for comp in competitors:
+                if comp.get('website'):
+                    domain = urlparse(comp['website']).netloc
+                    if not domain.startswith('www.'):
+                        comp['website'] = f"https://www.{domain}"
+                    elif not comp['website'].startswith('http'):
+                        comp['website'] = f"https://{domain}"
+            
+            return competitors[:3]  # Ensure we only get 3 competitors
+            
+    except Exception as e:
+        logger.error(f"Competitor search failed: {str(e)}")
+        return []
 
 def main():
+    # Display header image
+    st.image("header_image.png", use_column_width=True, caption=None)
+    
     st.title("Venture Studio Competitor Analysis")
     
-    if not initialize_nltk():
-        return
-    
-    if 'brave_api_key' not in st.secrets:
-        st.error("Missing Brave API key. Please add it to your Streamlit secrets.")
-        return
-    
-    # Input section with improved validation
+    # Input section
     with st.form("analysis_form"):
-        col1, col2 = st.columns(2)
+        startup_name = st.text_input(
+            "Startup Name",
+            help="Enter your startup's name"
+        )
         
-        with col1:
-            startup_name = st.text_input(
-                "Startup Name",
-                help="Enter your startup's name"
-            )
-            
-        with col2:
-            time_period = st.selectbox(
-                "Time Period",
-                ["Last Month", "Last 3 Months", "Last 6 Months", "Last Year"]
-            )
-            
         pitch = st.text_area(
-            "Pitch or Description",
-            help="Enter a brief description of your startup"
+            "One-Sentence Pitch",
+            help="Describe what your startup does in one sentence",
+            max_chars=200
         )
         
         submitted = st.form_submit_button("Analyze")
-        
+    
     if submitted and startup_name and pitch:
-        # Store search in history
-        st.session_state.search_history.append({
-            'startup': startup_name,
-            'timestamp': datetime.now()
-        })
-        
-        # Perform analysis
-        try:
-            df = brave_search(
-                f"{startup_name} {pitch}",
-                time_period,
-                st.secrets["brave_api_key"]
-            )
-            
-            if not df.empty:
-                display_analysis_results(df, startup_name)
-            else:
-                st.warning("No competitor data found. Try adjusting your search terms.")
-                    
-        except Exception as e:
-            logger.error(f"Analysis failed: {str(e)}")
-            st.error("An error occurred during analysis. Please try again.")
-            
-    # Display search history
-    if st.session_state.search_history:
-        with st.expander("Recent Searches"):
-            for search in reversed(st.session_state.search_history[-5:]):
-                st.text(f"{search['startup']} - {search['timestamp'].strftime('%Y-%m-%d %H:%M')}")
+        with st.spinner("Analyzing your startup..."):
+            try:
+                # Identify industries
+                industries = identify_industries(pitch)
+                
+                st.subheader("🎯 Select Your Industry")
+                st.write("Based on your pitch, these are the most relevant industries:")
+                
+                # Create columns for industry buttons
+                cols = st.columns(3)
+                selected_industry = None
+                
+                for idx, industry in enumerate(industries):
+                    with cols[idx]:
+                        if st.button(f"📊 {industry}", use_container_width=True):
+                            selected_industry = industry
+                
+                # If an industry is selected, show competitor analysis
+                if selected_industry:
+                    with st.spinner(f"Finding competitors in {selected_industry}..."):
+                        competitors = find_competitors(selected_industry, pitch)
+                        
+                        st.subheader("🏢 Top Competitors")
+                        st.write(f"Here are your top competitors in {selected_industry}:")
+                        
+                        for comp in competitors:
+                            st.markdown(f"""
+                            <div class="competitor-card">
+                                <h3>{comp['name']}</h3>
+                                <p><strong>Website:</strong> <a href="{comp['website']}" target="_blank">{comp['website']}</a></p>
+                                <p><strong>Description:</strong> {comp['description']}</p>
+                                <p><strong>Key Differentiator:</strong> {comp['differentiator']}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+            except Exception as e:
+                logger.error(f"Analysis failed: {str(e)}")
+                st.error("An error occurred during analysis. Please try again.")
 
 if __name__ == "__main__":
     main()
