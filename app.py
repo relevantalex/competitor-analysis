@@ -349,24 +349,24 @@ def main():
                     for comp in st.session_state.competitors[industry]:
                         st.markdown(f"""
                         <div class="competitor-card">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                                <h1 class="competitor-name">{comp['name']}</h1>
+                            <div class="card-header">
+                                <h3 class="company-name">{comp['name']}</h3>
+                                <p class="company-industry">{industry}</p>
+                            </div>
+                            <div class="card-content">
+                                <p class="description-text">{comp['description']}</p>
+                                <div style="margin-bottom: 1rem;">
+                                    <h4 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Key Differentiator</h4>
+                                    <p class="description-text" style="margin-bottom: 0;">{comp['differentiator']}</p>
+                                </div>
                                 <a href="{comp['website']}" target="_blank" class="website-link">
                                     Visit Website
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 0.5rem;">
                                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                                         <polyline points="15 3 21 3 21 9"></polyline>
                                         <line x1="10" y1="14" x2="21" y2="3"></line>
                                     </svg>
                                 </a>
-                            </div>
-                            <div style="margin-bottom: 16px;">
-                                <h2 class="section-title">Description</h2>
-                                <p style="color: #64748b; margin: 0;">{comp['description']}</p>
-                            </div>
-                            <div>
-                                <h3 class="subsection-title">Key Differentiator</h3>
-                                <p style="color: #64748b; margin: 0;">{comp['differentiator']}</p>
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
