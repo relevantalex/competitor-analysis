@@ -94,10 +94,23 @@ def get_industry_analysis(pitch: str, model: str = "gpt-4") -> List[str]:
     
     return [industry.strip() for industry in industries]
 
-def analyze_competitors(industry: str, startup_name: str, pitch: str, model: str = "gpt-4") -> List[Dict[str, Any]]:
-    """Use AI to analyze competitors based on web search results"""
-    
-    # First, get competitor information from Brave Search
+def get_industry_analysis(pitch: str) -> List[str]:
+    """Use GPT-4 to analyze the pitch and identify potential industries"""
+    response = openai.ChatCompletion.create(
+        model="gpt-4",  # You can also use "gpt-4-turbo-preview" if you want the latest version
+        messages=[
+            {"role": "system", "content": "You are an expert in industry analysis and market research."},
+            {"role": "user", "content": f"""Based on this pitch, identify the top 3 most relevant industries 
+            that this startup could be categorized in. Only return the industry names separated by '|':
+            Pitch: {pitch}"""}
+        ],
+        temperature=0.7
+    )
+    industries = response.choices[0].message.content.split("|")
+    return [industry.strip() for industry in industries]
+
+def analyze_competitors(industry: str, startup_name: str, pitch: str) -> List[Dict[str, Any]]:
+    """Use GPT-4 and web search to analyze competitors"""
     headers = {
         'X-Subscription-Token': BRAVE_API_KEY,
         'Accept': 'application/json',
@@ -108,7 +121,6 @@ def analyze_competitors(industry: str, startup_name: str, pitch: str, model: str
         'count': '30'
     }
     
-    results = []
     try:
         response = requests.get(
             'https://api.search.brave.com/res/v1/web/search',
@@ -120,40 +132,65 @@ def analyze_competitors(industry: str, startup_name: str, pitch: str, model: str
             data = response.json()
             search_results = data.get('web', {}).get('results', [])
             
-            # Use AI to analyze the search results
-            if model == "gpt-4":
-                analysis_prompt = f"""Based on these search results about competitors in {industry}, identify the top 3 most relevant 
-                competitors for a startup with this pitch: {pitch}
+            analysis_prompt = f"""Based on these search results about competitors in {industry}, identify the top 3 most relevant 
+            competitors for a startup with this pitch: {pitch}
 
-                For each competitor, provide:
-                1. Company name
-                2. Website URL
-                3. Brief description of their offering
-                4. Key differentiators
+            For each competitor, provide:
+            1. Company name
+            2. Website URL
+            3. Brief description of their offering
+            4. Key differentiators
 
-                Format the response as JSON with this structure:
-                {{
-                    "competitors": [
-                        {{
-                            "name": "Company Name",
-                            "website": "URL",
-                            "description": "Brief description",
-                            "differentiators": ["diff1", "diff2"]
-                        }}
-                    ]
-                }}
+            Format the response as JSON with this structure:
+            {{
+                "competitors": [
+                    {{
+                        "name": "Company Name",
+                        "website": "URL",
+                        "description": "Brief description",
+                        "differentiators": ["diff1", "diff2"]
+                    }}
+                ]
+            }}
 
-                Search results:
-                {json.dumps(search_results, indent=2)}"""
-                
-                response = openai.ChatCompletion.create(
-                    model="gpt-4-turbo-preview",
-                    messages=[
-                        {"role": "system", "content": "You are an expert in competitive analysis."},
-                        {"role": "user", "content": analysis_prompt}
-                    ],
-                    temperature=0.7
-                )
+            Search results:
+            {json.dumps(search_results, indent=2)}"""
+            
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are an expert in competitive analysis."},
+                    {"role": "user", "content": analysis_prompt}
+                ],
+                temperature=0.7
+            )
+            competitors = json.loads(response.choices[0].message.content)["competitors"]
+            return competitors
+            
+    except Exception as e:
+        st.error(f"Error analyzing competitors: {str(e)}")
+        return []
+
+def get_market_insights(industry: str, competitors: List[Dict[str, Any]]) -> str:
+    """Get GPT-4 generated market insights based on competitor analysis"""
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are an expert in market analysis and business strategy."},
+            {"role": "user", "content": f"""Based on these competitors in the {industry} industry, provide strategic insights 
+            about market opportunities and positioning:
+            {json.dumps(competitors, indent=2)}
+            
+            Focus on:
+            1. Market gaps
+            2. Underserved segments
+            3. Potential differentiators
+            4. Strategic recommendations
+            
+            Format your response with Markdown headings and bullet points."""}
+        ],
+        temperature=0.7
+    )
                 competitors = json.loads(response.choices[0].message.content)["competitors"]
             
             else:  # Claude
