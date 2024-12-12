@@ -12,6 +12,18 @@ from urllib.parse import urlparse
 import openai
 from anthropic import Anthropic
 from duckduckgo_search import DDGS
+import csv
+from io import StringIO
+
+# Initialize session state for storing analysis results
+if 'competitors' not in st.session_state:
+    st.session_state.competitors = {}
+if 'selected_industry' not in st.session_state:
+    st.session_state.selected_industry = None
+if 'industries' not in st.session_state:
+    st.session_state.industries = None
+if 'analysis_done' not in st.session_state:
+    st.session_state.analysis_done = False
 
 # Configure logging
 logging.basicConfig(
@@ -68,26 +80,26 @@ st.markdown("""
             border-radius: 0 0 20px 20px;
             margin-bottom: 2rem;
         }
+
+        .export-button {
+            background-color: #1976D2 !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
 class AIProvider:
     """AI Provider class to handle different AI services"""
     def __init__(self):
-        # Check which AI provider to use
         self.provider = st.secrets.get("api_settings", {}).get("ai_provider", "openai")
         
         if self.provider == "openai":
             openai.api_key = st.secrets["api_keys"]["openai_api_key"]
-            # GPT-4 Turbo is the latest model as of April 2024
             self.model = "gpt-4-turbo-preview"
         else:
             self.anthropic = Anthropic(api_key=st.secrets["api_keys"]["anthropic_api_key"])
-            # Claude 3 Opus is the latest model as of April 2024
             self.model = "claude-3-opus-20240229"
 
-    async def generate_response(self, prompt: str) -> str:
-        """Generate AI response with proper error handling"""
+    def generate_response(self, prompt: str) -> str:
         try:
             if self.provider == "openai":
                 response = openai.chat.completions.create(
@@ -181,6 +193,37 @@ def find_competitors(industry: str, pitch: str) -> List[Dict]:
         logger.error(f"Competitor search failed: {str(e)}")
         return []
 
+def export_results(data: Dict, startup_name: str):
+    """Export analysis results to CSV"""
+    csv_data = []
+    headers = ['Industry', 'Competitor', 'Website', 'Description', 'Key Differentiator']
+    
+    for industry, competitors in data.items():
+        for comp in competitors:
+            csv_data.append([
+                industry,
+                comp['name'],
+                comp['website'],
+                comp['description'],
+                comp['differentiator']
+            ])
+    
+    # Create CSV string
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+    writer.writerows(csv_data)
+    
+    # Create download button
+    st.download_button(
+        label="📥 Export Analysis to CSV",
+        data=output.getvalue(),
+        file_name=f"{startup_name}_competitor_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
+        mime='text/csv',
+        key='export-button',
+        help="Download the complete analysis as a CSV file"
+    )
+
 def main():
     # Custom title section with gradient background
     st.markdown("""
@@ -208,39 +251,49 @@ def main():
     if submitted and startup_name and pitch:
         with st.spinner("Analyzing your startup..."):
             try:
-                industries = identify_industries(pitch)
+                # Generate industries
+                st.session_state.industries = identify_industries(pitch)
+                st.session_state.analysis_done = True
+                st.session_state.competitors = {}  # Reset competitors
                 
-                st.subheader("🎯 Select Your Industry")
-                st.write("Based on your pitch, these are the most relevant industries:")
+                # Rerun to show the tabs
+                st.rerun()
                 
-                cols = st.columns(3)
-                selected_industry = None
-                
-                for idx, industry in enumerate(industries):
-                    with cols[idx]:
-                        if st.button(f"📊 {industry}", use_container_width=True):
-                            selected_industry = industry
-                
-                if selected_industry:
-                    with st.spinner(f"Finding competitors in {selected_industry}..."):
-                        competitors = find_competitors(selected_industry, pitch)
-                        
-                        st.subheader("🏢 Top Competitors")
-                        st.write(f"Here are your top competitors in {selected_industry}:")
-                        
-                        for comp in competitors:
-                            st.markdown(f"""
-                            <div class="competitor-card">
-                                <h3>{comp['name']}</h3>
-                                <p><strong>Website:</strong> <a href="{comp['website']}" target="_blank">{comp['website']}</a></p>
-                                <p><strong>Description:</strong> {comp['description']}</p>
-                                <p><strong>Key Differentiator:</strong> {comp['differentiator']}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-
             except Exception as e:
                 logger.error(f"Analysis failed: {str(e)}")
                 st.error("An error occurred during analysis. Please check your API settings and try again.")
+    
+    # Show tabs if analysis is done
+    if st.session_state.analysis_done and st.session_state.industries:
+        # Create tabs for each industry
+        tabs = st.tabs(st.session_state.industries)
+        
+        # Process the selected tab
+        for idx, (tab, industry) in enumerate(zip(tabs, st.session_state.industries)):
+            with tab:
+                if industry not in st.session_state.competitors:
+                    if st.button(f"Analyze {industry} Competitors", key=f"analyze_{idx}"):
+                        with st.spinner(f"Finding competitors in {industry}..."):
+                            competitors = find_competitors(industry, pitch)
+                            st.session_state.competitors[industry] = competitors
+                            st.rerun()
+                
+                # Show competitors if available
+                if industry in st.session_state.competitors:
+                    for comp in st.session_state.competitors[industry]:
+                        st.markdown(f"""
+                        <div class="competitor-card">
+                            <h3>{comp['name']}</h3>
+                            <p><strong>Website:</strong> <a href="{comp['website']}" target="_blank">{comp['website']}</a></p>
+                            <p><strong>Description:</strong> {comp['description']}</p>
+                            <p><strong>Key Differentiator:</strong> {comp['differentiator']}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+        
+        # Show export button if we have any analysis results
+        if st.session_state.competitors:
+            st.markdown("---")
+            export_results(st.session_state.competitors, startup_name)
 
 if __name__ == "__main__":
     main()
