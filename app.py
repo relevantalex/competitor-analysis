@@ -214,6 +214,12 @@ def render_competitor_card(competitor: Dict):
         st.divider()
 
 def main():
+    # Add image at the top
+    st.image(
+        "https://drive.google.com/uc?id=16znIfqR7W_vb7QHYsRNuiyfusEMqsHy7",
+        use_column_width=True
+    )
+
     # Header section
     st.title("📊 Relevant Competitor Analysis")
     st.caption("Market insights with Relevant Venture Studio")
