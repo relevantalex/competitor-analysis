@@ -95,7 +95,7 @@ st.markdown("""
         }
         
         .card-header {
-            background: linear-gradient(to right, #E01955, #FF6B6B);
+            background: #E01955;
             padding: 1.25rem;
             color: white;
         }
@@ -197,6 +197,12 @@ st.markdown("""
             color: #6b7280;
             margin-top: 0.25rem;
         }
+
+        /* Fix textarea copy-paste */
+        .stTextArea textarea {
+            resize: vertical !important;
+            min-height: 100px !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -241,23 +247,19 @@ def export_to_csv(data):
 def main():
     st.markdown('<h1 class="page-title">Competitor Analysis Tool</h1>', unsafe_allow_html=True)
 
-    # Form section
+    # Form section - Changed to vertical layout
     with st.form("analysis_form"):
-        col1, col2 = st.columns(2)
+        startup_name = st.text_input(
+            "Startup Name",
+            help="Enter your startup's name",
+            placeholder="e.g., TechVision AI"
+        )
         
-        with col1:
-            startup_name = st.text_input(
-                "Startup Name",
-                help="Enter your startup's name",
-                placeholder="e.g., TechVision AI"
-            )
-        
-        with col2:
-            pitch = st.text_area(
-                "One-Sentence Pitch",
-                help="Describe your startup in one sentence",
-                placeholder="e.g., AI-powered analytics platform for retail optimization"
-            )
+        pitch = st.text_area(
+            "One-Sentence Pitch",
+            help="Describe your startup in one sentence",
+            placeholder="e.g., AI-powered analytics platform for retail optimization"
+        )
         
         region = st.selectbox(
             "Target Region",
@@ -269,40 +271,48 @@ def main():
 
     if submitted and startup_name and pitch:
         # Industry filter
-        industries = list(set(comp["industry"] for comp in MOCK_COMPETITORS))
-        selected_industry = st.selectbox("Filter by Industry", ["All Industries"] + industries)
+        selected_industry = st.selectbox(
+            "Filter by Industry",
+            ["All Industries"] + list(set(comp["industry"] for comp in MOCK_COMPETITORS))
+        )
+        
+        # Display filtered competitors
+        filtered_competitors = [
+            comp for comp in MOCK_COMPETITORS 
+            if selected_industry == "All Industries" or comp["industry"] == selected_industry
+        ]
         
         # Display competitors
-        for competitor in MOCK_COMPETITORS:
-            if selected_industry == "All Industries" or competitor["industry"] == selected_industry:
-                st.markdown(f"""
-                    <div class="competitor-card">
-                        <div class="card-header">
-                            <h2 class="company-name">{competitor['name']}</h2>
-                            <p class="company-industry">{competitor['industry']}</p>
-                        </div>
-                        <div class="card-content">
-                            <p class="description-text">{competitor['description']}</p>
-                            <div>
-                                <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Key Differentiator</h3>
-                                <p class="description-text" style="margin-bottom: 1rem;">{competitor['keyDifferentiator']}</p>
-                            </div>
-                            <a href="{competitor['website']}" target="_blank" class="website-link">
-                                Visit Website
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" 
-                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
-                                     stroke-linejoin="round" style="margin-left: 0.5rem;">
-                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                    <polyline points="15 3 21 3 21 9"></polyline>
-                                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                                </svg>
-                            </a>
-                        </div>
+        for competitor in filtered_competitors:
+            st.markdown(f"""
+                <div class="competitor-card">
+                    <div class="card-header">
+                        <h2 class="company-name">{competitor['name']}</h2>
+                        <p class="company-industry">{competitor['industry']}</p>
                     </div>
-                """, unsafe_allow_html=True)
+                    <div class="card-content">
+                        <p class="description-text">{competitor['description']}</p>
+                        <div>
+                            <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Key Differentiator</h3>
+                            <p class="description-text" style="margin-bottom: 1rem;">{competitor['keyDifferentiator']}</p>
+                        </div>
+                        <a href="{competitor['website']}" target="_blank" class="website-link">
+                            Visit Website
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" 
+                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
+                                 stroke-linejoin="round" style="margin-left: 0.5rem;">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
         
         # Export button
-        st.markdown(export_to_csv(MOCK_COMPETITORS), unsafe_allow_html=True)
+        if filtered_competitors:
+            st.markdown(export_to_csv(filtered_competitors), unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
