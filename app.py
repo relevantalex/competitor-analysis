@@ -61,7 +61,7 @@ st.markdown("""
             background: white;
         }
         
-        /* Button styling */
+        /* Button styling - Removing green */
         .stButton > button {
             width: 100%;
             background-color: #E01955 !important;
@@ -77,6 +77,23 @@ st.markdown("""
         .stButton > button:hover {
             background-color: #C01745 !important;
             transform: translateY(-1px);
+        }
+
+        /* Override Streamlit's default green button color */
+        .stButton > button[kind="primary"] {
+            background-color: #E01955 !important;
+            border-color: #E01955 !important;
+        }
+        
+        /* Override any other potential green buttons */
+        button[data-baseweb="button"] {
+            background-color: #E01955 !important;
+            border-color: #E01955 !important;
+        }
+        
+        /* Remove green focus outline */
+        .stButton > button:focus {
+            box-shadow: 0 0 0 0.2rem rgba(224, 25, 85, 0.25) !important;
         }
         
         /* Competitor card */
@@ -261,25 +278,30 @@ def main():
             placeholder="e.g., AI-powered analytics platform for retail optimization"
         )
         
-        region = st.selectbox(
+        # Changed to multiselect for regions
+        region = st.multiselect(
             "Target Region",
             ["Worldwide", "North America", "Europe", "Asia"],
-            help="Select your target market region"
+            default=["Worldwide"],
+            help="Select your target market regions (you can select multiple)"
         )
         
         submitted = st.form_submit_button("Analyze Market")
 
     if submitted and startup_name and pitch:
-        # Industry filter
-        selected_industry = st.selectbox(
+        # Industry filter with multiselect
+        available_industries = list(set(comp["industry"] for comp in MOCK_COMPETITORS))
+        selected_industries = st.multiselect(
             "Filter by Industry",
-            ["All Industries"] + list(set(comp["industry"] for comp in MOCK_COMPETITORS))
+            available_industries,
+            default=available_industries,
+            help="Select industries to filter (you can select multiple)"
         )
         
         # Display filtered competitors
         filtered_competitors = [
             comp for comp in MOCK_COMPETITORS 
-            if selected_industry == "All Industries" or comp["industry"] == selected_industry
+            if comp["industry"] in selected_industries
         ]
         
         # Display competitors
