@@ -399,13 +399,12 @@ def main():
         
         submitted = st.form_submit_button("Analyze Market")
 
-    if submitted and startup_name and pitch:
         # Create tabs for industry filtering
         tab_style = """
             <style>
             .stTabs [data-baseweb="tab-list"] {
                 gap: 8px;
-                border-bottom: 2px solid #E01955 !important;
+                border-bottom: none !important;
             }
             
             /* Button color fix */
@@ -424,19 +423,27 @@ def main():
         tabs = ["All"] + available_industries
         current_tab = st.tabs(tabs)
         
+        # Filter and display competitors (only once in grid view)
+        displayed_competitors = set()  # Track displayed competitors
+        
         # Filter competitors based on selected tab
         for i, tab in enumerate(current_tab):
             with tab:
                 if i == 0:  # "All" tab
-                    filtered_competitors = MOCK_COMPETITORS
+                    filtered_competitors = [comp for comp in MOCK_COMPETITORS if comp['id'] not in displayed_competitors]
                 else:
                     industry = available_industries[i-1]
-                    filtered_competitors = [comp for comp in MOCK_COMPETITORS if comp["industry"] == industry]
+                    filtered_competitors = [
+                        comp for comp in MOCK_COMPETITORS 
+                        if comp["industry"] == industry and comp['id'] not in displayed_competitors
+                    ]
                 
                 # Display competitors in two columns (grid view)
                 if filtered_competitors:
                     col1, col2 = st.columns(2)
                     for j, competitor in enumerate(filtered_competitors):
+                        # Add to displayed set
+                        displayed_competitors.add(competitor['id'])
                         with col1 if j % 2 == 0 else col2:
                             st.markdown(f"""
                                 <div class="competitor-card">
