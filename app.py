@@ -214,12 +214,17 @@ def render_competitor_card(competitor: Dict):
         st.divider()
 
 def main():
-    # Add image at the top
-    st.image(
-        "https://drive.google.com/uc?id=16znIfqR7W_vb7QHYsRNuiyfusEMqsHy7",
-        use_container_width=True,
-        caption=None  # Remove caption if you don't need one for the image
-    )
+     # Add banner image at the top
+    try:
+        banner_image = "https://drive.google.com/uc?id=16znIfqR7W_vb7QHYsRNuiyfusEMqsHy7"
+        st.image(
+            banner_image,
+            output_format="auto",  # Lets Streamlit determine the best format
+            channels="RGB",  # Ensures proper color handling
+            use_container_width=True
+        )
+    except Exception as e:
+        st.error(f"Error loading banner image: {str(e)}")
 
     # Header section
     st.title("📊 Relevant Competitor Analysis")
