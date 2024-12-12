@@ -15,15 +15,13 @@ from duckduckgo_search import DDGS
 import csv
 from io import StringIO
 
-# Initialize session state for storing analysis results
+# Initialize session state
 if 'competitors' not in st.session_state:
     st.session_state.competitors = {}
-if 'selected_industry' not in st.session_state:
-    st.session_state.selected_industry = None
 if 'industries' not in st.session_state:
     st.session_state.industries = None
-if 'analysis_done' not in st.session_state:
-    st.session_state.analysis_done = False
+if 'current_tab' not in st.session_state:
+    st.session_state.current_tab = 0
 
 # Configure logging
 logging.basicConfig(
@@ -39,28 +37,13 @@ st.set_page_config(
     layout="wide",
 )
 
-# Custom CSS with modern styling
+# Custom CSS
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
         html, body, [class*="css"] {
             font-family: 'Inter', sans-serif !important;
-        }
-        
-        .stButton>button {
-            background-color: #4CAF50 !important;
-            color: white !important;
-            font-family: 'Inter', sans-serif !important;
-            border-radius: 8px !important;
-            transition: all 0.3s ease;
-            height: 60px !important;
-            font-size: 16px !important;
-        }
-        
-        .stButton>button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
         }
         
         .competitor-card {
@@ -80,15 +63,10 @@ st.markdown("""
             border-radius: 0 0 20px 20px;
             margin-bottom: 2rem;
         }
-
-        .export-button {
-            background-color: #1976D2 !important;
-        }
     </style>
 """, unsafe_allow_html=True)
 
 class AIProvider:
-    """AI Provider class to handle different AI services"""
     def __init__(self):
         self.provider = st.secrets.get("api_settings", {}).get("ai_provider", "openai")
         
@@ -124,61 +102,75 @@ class AIProvider:
 
         except Exception as e:
             logger.error(f"AI generation failed: {str(e)}")
-            st.error("Failed to generate AI response. Please check your API settings.")
             raise
 
 @st.cache_data(ttl=3600)
 def identify_industries(pitch: str) -> List[str]:
     """Identify potential industries based on the pitch using AI"""
     ai = AIProvider()
-    prompt = f"""Analyze this startup pitch and identify the 3 most relevant industries: "{pitch}"
-    Focus on specific, modern industry categories.
-    Return only a JSON array of 3 industry names, no other text.
-    Example format: ["FinTech - Payment Processing", "B2B SaaS", "Financial Services"]
-    Make industries specific and actionable."""
+    prompt = f"""Based on this pitch: "{pitch}"
+    Identify exactly 3 specific, relevant industries or market segments.
+    Format your response as a JSON array with exactly 3 strings.
+    Make each industry name specific and descriptive.
+    Example: ["AI-Powered Security Analytics", "Retail Technology Solutions", "Computer Vision SaaS"]"""
 
     try:
         response = ai.generate_response(prompt)
-        industries = json.loads(response)
+        # Clean the response to ensure it's valid JSON
+        cleaned_response = response.strip()
+        if not cleaned_response.startswith('['):
+            cleaned_response = cleaned_response[cleaned_response.find('['):]
+        if not cleaned_response.endswith(']'):
+            cleaned_response = cleaned_response[:cleaned_response.rfind(']')+1]
+        
+        industries = json.loads(cleaned_response)
         return industries[:3]
     except Exception as e:
         logger.error(f"Industry identification failed: {str(e)}")
-        return ["Technology", "Software", "Digital Services"]
+        return ["Technology Solutions", "Software Services", "Digital Innovation"]
 
-@st.cache_data(ttl=3600)
 def find_competitors(industry: str, pitch: str) -> List[Dict]:
     """Find competitors using AI and web search"""
     ai = AIProvider()
     
-    search_prompt = f"""Create a precise search query to find direct competitors based on:
-    Industry: {industry}
-    Pitch: "{pitch}"
-    Focus on companies solving similar problems.
-    Return only the search query, no other text."""
-
     try:
-        search_query = ai.generate_response(search_prompt)
+        # First, generate a focused search query
+        search_prompt = f"""For a startup in {industry} with this pitch: "{pitch}"
+        Create a search query to find direct competitors.
+        Return only the search query text, nothing else."""
+
+        search_query = ai.generate_response(search_prompt).strip().strip('"')
         
-        competitors = []
+        # Perform the search
         with DDGS() as ddgs:
             results = list(ddgs.text(search_query, max_results=10))
             
-            analysis_prompt = f"""Analyze these search results and identify the 3 most relevant direct competitors in {industry}.
-            Search results: {json.dumps(results)}
+            # Analyze the results with AI
+            analysis_prompt = f"""Analyze these competitors in {industry}:
+            {json.dumps(results)}
             
-            For each competitor provide:
-            - Company name (only the actual company name)
-            - Website (main company website only)
-            - Brief, specific description (max 2 sentences)
-            - Key differentiator (one specific unique selling point)
+            Identify the top 3 most relevant direct competitors.
+            Return a JSON array with exactly 3 companies, each containing:
+            {{
+                "name": "Company Name",
+                "website": "company website",
+                "description": "2-sentence description",
+                "differentiator": "key unique selling point"
+            }}
             
-            Return as JSON array with keys: name, website, description, differentiator
-            Ensure websites are clean, valid URLs."""
+            Return ONLY the JSON array, no other text."""
 
             competitor_analysis = ai.generate_response(analysis_prompt)
-            competitors = json.loads(competitor_analysis)
+            # Clean the response to ensure it's valid JSON
+            cleaned_analysis = competitor_analysis.strip()
+            if not cleaned_analysis.startswith('['):
+                cleaned_analysis = cleaned_analysis[cleaned_analysis.find('['):]
+            if not cleaned_analysis.endswith(']'):
+                cleaned_analysis = cleaned_analysis[:cleaned_analysis.rfind(']')+1]
             
-            # Clean and validate URLs
+            competitors = json.loads(cleaned_analysis)
+            
+            # Clean URLs
             for comp in competitors:
                 if comp.get('website'):
                     parsed_url = urlparse(comp['website'])
@@ -191,14 +183,19 @@ def find_competitors(industry: str, pitch: str) -> List[Dict]:
             
     except Exception as e:
         logger.error(f"Competitor search failed: {str(e)}")
+        st.error(f"Error finding competitors: {str(e)}")
         return []
 
-def export_results(data: Dict, startup_name: str):
+def export_results(startup_name: str):
     """Export analysis results to CSV"""
+    if not st.session_state.competitors:
+        st.warning("No analysis results to export yet.")
+        return
+        
     csv_data = []
     headers = ['Industry', 'Competitor', 'Website', 'Description', 'Key Differentiator']
     
-    for industry, competitors in data.items():
+    for industry, competitors in st.session_state.competitors.items():
         for comp in competitors:
             csv_data.append([
                 industry,
@@ -216,16 +213,13 @@ def export_results(data: Dict, startup_name: str):
     
     # Create download button
     st.download_button(
-        label="📥 Export Analysis to CSV",
+        label="📥 Export Analysis",
         data=output.getvalue(),
         file_name=f"{startup_name}_competitor_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
-        mime='text/csv',
-        key='export-button',
-        help="Download the complete analysis as a CSV file"
+        mime='text/csv'
     )
 
 def main():
-    # Custom title section with gradient background
     st.markdown("""
         <div class="title-container">
             <h1>Venture Studio Competitor Analysis</h1>
@@ -249,36 +243,29 @@ def main():
         submitted = st.form_submit_button("Analyze")
     
     if submitted and startup_name and pitch:
-        with st.spinner("Analyzing your startup..."):
-            try:
-                # Generate industries
-                st.session_state.industries = identify_industries(pitch)
-                st.session_state.analysis_done = True
-                st.session_state.competitors = {}  # Reset competitors
-                
-                # Rerun to show the tabs
-                st.rerun()
-                
-            except Exception as e:
-                logger.error(f"Analysis failed: {str(e)}")
-                st.error("An error occurred during analysis. Please check your API settings and try again.")
-    
-    # Show tabs if analysis is done
-    if st.session_state.analysis_done and st.session_state.industries:
-        # Create tabs for each industry
-        tabs = st.tabs(st.session_state.industries)
+        with st.spinner("Analyzing industries..."):
+            st.session_state.industries = identify_industries(pitch)
+            st.session_state.competitors = {}
+            st.rerun()
+
+    # Show analysis if industries are identified
+    if st.session_state.industries:
+        # Create tabs
+        tab_titles = st.session_state.industries
+        tabs = st.tabs(tab_titles)
         
-        # Process the selected tab
-        for idx, (tab, industry) in enumerate(zip(tabs, st.session_state.industries)):
+        # Handle tab content
+        for i, tab in enumerate(tabs):
             with tab:
-                if industry not in st.session_state.competitors:
-                    if st.button(f"Analyze {industry} Competitors", key=f"analyze_{idx}"):
-                        with st.spinner(f"Finding competitors in {industry}..."):
-                            competitors = find_competitors(industry, pitch)
-                            st.session_state.competitors[industry] = competitors
-                            st.rerun()
+                industry = st.session_state.industries[i]
                 
-                # Show competitors if available
+                # Load competitors if not already loaded
+                if industry not in st.session_state.competitors:
+                    with st.spinner(f"Analyzing competitors in {industry}..."):
+                        competitors = find_competitors(industry, pitch)
+                        st.session_state.competitors[industry] = competitors
+                
+                # Display competitors
                 if industry in st.session_state.competitors:
                     for comp in st.session_state.competitors[industry]:
                         st.markdown(f"""
@@ -290,10 +277,10 @@ def main():
                         </div>
                         """, unsafe_allow_html=True)
         
-        # Show export button if we have any analysis results
+        # Show export button if we have results
         if st.session_state.competitors:
             st.markdown("---")
-            export_results(st.session_state.competitors, startup_name)
+            export_results(startup_name)
 
 if __name__ == "__main__":
     main()
