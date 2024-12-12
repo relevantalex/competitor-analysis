@@ -216,29 +216,21 @@ def render_competitor_card(competitor: Dict):
         st.divider()
 
 def main():
-     # Add CSS for rounded corners
+     # Add style for the banner image
     st.markdown("""
         <style>
-        .rounded-image {
-            border-radius: 20px;
-            overflow: hidden;
-        }
+            img {
+                border-radius: 20px;
+            }
         </style>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
     
     # Add banner image at the top using PIL
     try:
-        # Fetch the image from the URL
         response = requests.get("https://drive.google.com/uc?id=16znIfqR7W_vb7QHYsRNuiyfusEMqsHy7", stream=True)
-        response.raise_for_status()  # Raise an error for bad status codes
-        
-        # Open the image using PIL
+        response.raise_for_status()
         img = Image.open(BytesIO(response.content))
-        
-        # Display the image using Streamlit with rounded corners
-        st.markdown('<div class="rounded-image">', unsafe_allow_html=True)
         st.image(img, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
     except Exception as e:
         st.error(f"Error loading banner image: {str(e)}")
     
