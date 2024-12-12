@@ -58,6 +58,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+def get_brave_time_range(period):
+    """Convert time period to Brave API format"""
+    if period == "Last Month":
+        return "past_month"
+    elif period == "Last 3 Months":
+        return "past_6_months"  # Brave API doesn't have 3 months, using 6
+    elif period == "Last 6 Months":
+        return "past_6_months"
+    elif period == "Last Year":
+        return "past_year"
+    else:  # Any time
+        return None
+
 @st.cache_data(ttl=3600)
 def get_time_range(period):
     today = datetime.now()
@@ -89,7 +102,7 @@ def get_sentiment(text):
     return analysis.sentiment.polarity
 
 @st.cache_data(ttl=3600)
-def brave_search(query, start_date, api_key):
+def brave_search(query, time_period, api_key):
     """
     Search using Brave's API with time filtering
     """
@@ -100,15 +113,15 @@ def brave_search(query, start_date, api_key):
         'Accept': 'application/json',
     }
 
-    # Convert start_date to timestamp for Brave API
-    time_range_seconds = int((datetime.now() - start_date).total_seconds())
-    
     params = {
         'q': query,
-        'time_range': f'time_{time_range_seconds}',
-        'count': '20',  # Maximum results per request
-        'search_lang': 'en'
+        'count': '20'  # Maximum results per request
     }
+    
+    # Add time range if specified
+    brave_time = get_brave_time_range(time_period)
+    if brave_time:
+        params['time_range'] = brave_time
     
     try:
         response = requests.get(
@@ -124,8 +137,8 @@ def brave_search(query, start_date, api_key):
                 title = result.get('title', '')
                 description = result.get('description', '')
                 url = result.get('url', '')
-                # Convert Brave's timestamp to datetime
-                date = datetime.fromtimestamp(result.get('age', 0))
+                # Use current date if no date is provided
+                date = datetime.now()
                 
                 sentiment = get_sentiment(title + " " + description)
                 
@@ -138,9 +151,11 @@ def brave_search(query, start_date, api_key):
                 })
         else:
             st.error(f"Error from Brave API: {response.status_code}")
+            st.write("Response:", response.text)
             
     except Exception as e:
         st.error(f"Error searching Brave: {str(e)}")
+        st.write("Full error:", str(e))
     
     return pd.DataFrame(results)
 
@@ -205,14 +220,11 @@ def main():
         if startup_name and pitch:
             # Show loading spinner
             with st.spinner("Analyzing competitors..."):
-                # Get date range
-                start_date = get_time_range(time_period)
-                
                 # Create search query
                 search_query = f"{startup_name} {pitch}"
                 
                 # Scrape and analyze data using Brave Search
-                df = brave_search(search_query, start_date, st.secrets["brave_api_key"])
+                df = brave_search(search_query, time_period, st.secrets["brave_api_key"])
                 
                 if not df.empty:
                     # Display results
