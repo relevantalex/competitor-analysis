@@ -234,10 +234,6 @@ def main():
     except Exception as e:
         st.error(f"Error loading banner image: {str(e)}")
     
-    # Header section
-    st.title("📊 Market insights with Relevant Venture Studio")
-    st.caption("")
-    
     # Input section with improved layout
     with st.container():
         col1, col2 = st.columns(2)
