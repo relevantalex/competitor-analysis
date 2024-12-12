@@ -234,8 +234,8 @@ def main():
         st.error(f"Error loading banner image: {str(e)}")
     
     # Header section
-    st.title("📊 Relevant Competitor Analysis")
-    st.caption("Market insights with Relevant Venture Studio")
+    st.title("📊 Market insights with Relevant Venture Studio")
+    st.caption("")
     
     # Input section with improved layout
     with st.container():
