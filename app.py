@@ -146,12 +146,12 @@ def get_sentiment(text):
     return analysis.sentiment.polarity
 
 @st.cache_data(ttl=3600)
-def brave_search(query, time_period):
+def brave_search(query, time_period, api_key):
     """Search using Brave's API with time filtering"""
     results = []
     
     headers = {
-        'X-Subscription-Token': st.secrets["brave_api_key"],
+        'X-Subscription-Token': api_key,
         'Accept': 'application/json',
     }
 
@@ -336,8 +336,8 @@ def main():
     st.title("Relevant Venture Studio Competitor Analysis")
     
     if 'brave_api_key' not in st.secrets:
-        st.error("Please add your Brave API key to the Streamlit secrets")
-        st.info("Add it in your Streamlit Cloud dashboard under App -> Settings -> Secrets")
+        st.error("Please add your Brave API key to the Streamlit secrets with the key 'brave_api_key'")
+        st.info("To add your API key, go to your Streamlit app settings and add it under 'Secrets' with the key 'brave_api_key'")
         return
     
     col1, col2 = st.columns(2)
@@ -368,7 +368,9 @@ def main():
         
         if selected_industry:
             with st.spinner(f"Analyzing {selected_industry} industry..."):
-                df = brave_search(f"{startup_name} {pitch} {selected_industry}", time_period)
+                df = brave_search(f"{startup_name} {pitch} {selected_industry}", 
+                                time_period, 
+                                st.secrets["brave_api_key"])
                 
                 if not df.empty:
                     st.subheader(f"Competitor Analysis Results - {selected_industry}")
@@ -377,4 +379,30 @@ def main():
                     competitors = extract_competitors(df, selected_industry)
                     display_competitor_analysis(competitors, startup_name, pitch, selected_industry)
                     
+                    # Display sentiment summary with emoji
+                    st.subheader("Market Sentiment Summary")
+                    fig_sentiment, fig_wordfreq, sentiment_trend, avg_sentiment = analyze_competitors(df)
+                    emoji, sentiment_text = get_sentiment_emoji(avg_sentiment)
+                    st.markdown(f"### Overall Market Sentiment: {emoji} {sentiment_text}")
+                    display_sentiment_explanation(avg_sentiment)
+                    
                     # Display visualizations
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.plotly_chart(fig_sentiment, use_container_width=True)
+                    with col2:
+                        st.plotly_chart(fig_wordfreq, use_container_width=True)
+                    
+                    # Display news articles
+                    st.subheader("Recent News and Developments")
+                    for _, row in df.iterrows():
+                        with st.expander(f"{row['title']} - {row['date'].strftime('%B %Y')}"):
+                            st.write(clean_html(row['description']))
+                            emoji, _ = get_sentiment_emoji(row['sentiment'])
+                            st.write(f"Sentiment: {emoji} {row['sentiment']:.2f}")
+                            st.write(f"Source: {row['link']}")
+                else:
+                    st.warning(f"No relevant competitor information found for {selected_industry} industry in the specified time period.")
+                    
+if __name__ == "__main__":
+    main()
