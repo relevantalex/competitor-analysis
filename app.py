@@ -215,17 +215,11 @@ def render_competitor_card(competitor: Dict):
 
 def main():
      # Add banner image at the top
-    try:
-        banner_image = "https://drive.google.com/uc?id=16znIfqR7W_vb7QHYsRNuiyfusEMqsHy7"
-        st.image(
-            banner_image,
-            output_format="auto",  # Lets Streamlit determine the best format
-            channels="RGB",  # Ensures proper color handling
-            use_container_width=True
-        )
-    except Exception as e:
-        st.error(f"Error loading banner image: {str(e)}")
-
+    st.image(
+        "https://drive.google.com/uc?id=16znIfqR7W_vb7QHYsRNuiyfusEMqsHy7",
+        width=None  # This allows the image to scale naturally
+    )
+    
     # Header section
     st.title("📊 Relevant Competitor Analysis")
     st.caption("Market insights with Relevant Venture Studio")
