@@ -166,13 +166,40 @@ st.markdown("""
         .stMultiSelect [data-baseweb="tag"] {
             background-color: #E01955 !important;
             color: white !important;
+            border-radius: 20px !important;
         }
         
         .stMultiSelect [data-baseweb="tag"]:hover {
             background-color: #C01745 !important;
         }
 
-        /* Analyze Market button and line */
+        /* X icon in chips */
+        .stMultiSelect [data-baseweb="tag"] [data-baseweb="icon"] {
+            color: white !important;
+        }
+
+        /* Tab styling */
+        .stTabs [data-baseweb="tab-list"] {
+            background-color: transparent !important;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .stTabs [data-baseweb="tab"] {
+            border: none !important;
+            color: #6b7280 !important;
+            background-color: transparent !important;
+        }
+
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+            color: #E01955 !important;
+            border-bottom: 2px solid #E01955 !important;
+        }
+
+        .stTabs [data-baseweb="tab"]:hover {
+            color: #E01955 !important;
+        }
+
+        /* Button with fixed hover color */
         .stButton > button {
             width: 100%;
             background-color: #E01955 !important;
@@ -373,52 +400,49 @@ def main():
         submitted = st.form_submit_button("Analyze Market")
 
     if submitted and startup_name and pitch:
-        # Industry filter with multiselect
+        # Create tabs for industry filtering
         available_industries = list(set(comp["industry"] for comp in MOCK_COMPETITORS))
-        selected_industries = st.multiselect(
-            "Filter by Industry",
-            available_industries,
-            default=available_industries,
-            help="Select industries to filter (you can select multiple)"
-        )
-
-        # Display filtered competitors in two columns
-        col1, col2 = st.columns(2)
+        tabs = ["All"] + available_industries
+        current_tab = st.tabs(tabs)
         
-        # Filter competitors
-        filtered_competitors = [
-            comp for comp in MOCK_COMPETITORS 
-            if comp["industry"] in (selected_industries if selected_industries else available_industries)
-        ]
-        
-        # Display competitors in two columns
-        for i, competitor in enumerate(filtered_competitors):
-            with col1 if i % 2 == 0 else col2:
-                st.markdown(f"""
-                    <div class="competitor-card">
-                        <div class="card-header">
-                            <h2 class="company-name">{competitor['name']}</h2>
-                            <p class="company-industry">{competitor['industry']}</p>
-                        </div>
-                        <div class="card-content">
-                            <p class="description-text">{competitor['description']}</p>
-                            <div>
-                                <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Key Differentiator</h3>
-                                <p class="description-text" style="margin-bottom: 1rem;">{competitor['keyDifferentiator']}</p>
+        # Filter competitors based on selected tab
+        for i, tab in enumerate(current_tab):
+            with tab:
+                if i == 0:  # "All" tab
+                    filtered_competitors = MOCK_COMPETITORS
+                else:
+                    industry = available_industries[i-1]
+                    filtered_competitors = [comp for comp in MOCK_COMPETITORS if comp["industry"] == industry]
+                
+                # Display competitors in two columns
+                col1, col2 = st.columns(2)
+                for j, competitor in enumerate(filtered_competitors):
+                    with col1 if j % 2 == 0 else col2:
+                        st.markdown(f"""
+                            <div class="competitor-card">
+                                <div class="card-header">
+                                    <h2 class="company-name">{competitor['name']}</h2>
+                                    <p class="company-industry">{competitor['industry']}</p>
+                                </div>
+                                <div class="card-content">
+                                    <p class="description-text">{competitor['description']}</p>
+                                    <div>
+                                        <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Key Differentiator</h3>
+                                        <p class="description-text" style="margin-bottom: 1rem;">{competitor['keyDifferentiator']}</p>
+                                    </div>
+                                    <a href="{competitor['website']}" target="_blank" class="website-link">
+                                        Visit Website
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" 
+                                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
+                                             stroke-linejoin="round" style="margin-left: 0.5rem;">
+                                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                            <polyline points="15 3 21 3 21 9"></polyline>
+                                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                                        </svg>
+                                    </a>
+                                </div>
                             </div>
-                            <a href="{competitor['website']}" target="_blank" class="website-link">
-                                Visit Website
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" 
-                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
-                                     stroke-linejoin="round" style="margin-left: 0.5rem;">
-                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                    <polyline points="15 3 21 3 21 9"></polyline>
-                                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                                </svg>
-                            </a>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
         
         # Display competitors
         for competitor in filtered_competitors:
