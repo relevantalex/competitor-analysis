@@ -37,18 +37,21 @@ st.set_page_config(
     layout="wide",
 )
 
-# Custom CSS with dark theme
+# Improved Custom CSS with better UI/UX
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
-        /* Main theme colors */
+        /* Main theme colors - softer palette */
         :root {
-            --background-color: #1a1a1a;
-            --text-color: #ffffff;
-            --accent-color: #ff4b4b;
-            --card-bg: #2d2d2d;
-            --hover-color: #ff6b6b;
+            --background-color: #121212;
+            --card-bg: #1E1E1E;
+            --text-color: #E0E0E0;
+            --accent-color: #E53935;
+            --accent-light: #FF5252;
+            --accent-dark: #C62828;
+            --border-color: #2C2C2C;
+            --input-bg: #262626;
         }
 
         /* Global styles */
@@ -66,118 +69,189 @@ st.markdown("""
         /* Headers */
         h1, h2, h3, h4, h5, h6 {
             color: var(--text-color) !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.02em !important;
         }
 
-        /* Links */
+        /* Links with improved contrast */
         a {
-            color: var(--accent-color) !important;
+            color: var(--accent-light) !important;
             text-decoration: none !important;
+            transition: all 0.2s ease !important;
+            opacity: 0.9 !important;
         }
         
         a:hover {
-            color: var(--hover-color) !important;
-            text-decoration: underline !important;
+            color: var(--accent-light) !important;
+            opacity: 1 !important;
+            text-decoration: none !important;
         }
 
-        /* Competitor cards */
+        /* Improved competitor cards */
         .competitor-card {
-            padding: 24px;
+            padding: 28px;
             border-radius: 12px;
             background-color: var(--card-bg);
-            margin: 16px 0;
-            border-left: 5px solid var(--accent-color);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s ease;
+            margin: 24px 0;
+            border-left: 3px solid var(--accent-color);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
         }
         
         .competitor-card:hover {
             transform: translateY(-2px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
         }
 
-        /* Title container */
+        .competitor-card h3 {
+            margin-bottom: 16px;
+            font-size: 1.3rem;
+            color: var(--text-color) !important;
+        }
+
+        .competitor-card p {
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+
+        /* Enhanced title container */
         .title-container {
-            padding: 2rem 0;
+            padding: 3rem 0;
             text-align: center;
-            background: linear-gradient(120deg, #2d2d2d, var(--accent-color));
+            background: linear-gradient(135deg, #1E1E1E 0%, var(--accent-dark) 100%);
             color: white;
-            border-radius: 0 0 20px 20px;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 0 0 24px 24px;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        /* Form inputs */
+        .title-container h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.03em;
+        }
+
+        .title-container p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* Improved form inputs */
         .stTextInput > div > div {
-            background-color: var(--card-bg) !important;
+            background-color: var(--input-bg) !important;
             color: var(--text-color) !important;
             border-radius: 8px !important;
+            border: 1px solid var(--border-color) !important;
+            padding: 8px 12px !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .stTextInput > div > div:focus-within {
+            border-color: var(--accent-color) !important;
+            box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.2) !important;
         }
 
         .stTextArea > div > div {
-            background-color: var(--card-bg) !important;
+            background-color: var(--input-bg) !important;
             color: var(--text-color) !important;
             border-radius: 8px !important;
+            border: 1px solid var(--border-color) !important;
+            padding: 8px 12px !important;
+            min-height: 100px !important;
+            transition: all 0.2s ease !important;
         }
 
-        /* Buttons */
+        .stTextArea > div > div:focus-within {
+            border-color: var(--accent-color) !important;
+            box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.2) !important;
+        }
+
+/* Enhanced buttons */
         .stButton > button {
-            background-color: var(--accent-color) !important;
+            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-dark) 100%) !important;
             color: white !important;
             border: none !important;
             border-radius: 8px !important;
-            padding: 0.5rem 1rem !important;
+            padding: 0.6rem 1.5rem !important;
             font-weight: 600 !important;
-            transition: background-color 0.2s ease !important;
+            letter-spacing: 0.02em !important;
+            transition: all 0.2s ease !important;
+            text-transform: uppercase !important;
+            font-size: 0.9rem !important;
         }
 
         .stButton > button:hover {
-            background-color: var(--hover-color) !important;
+            background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent-color) 100%) !important;
             transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(229, 57, 53, 0.2) !important;
         }
 
-        /* Tabs */
+        /* Improved tabs */
         .stTabs [data-baseweb="tab-list"] {
-            gap: 8px;
+            gap: 12px;
             background-color: var(--background-color);
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .stTabs [data-baseweb="tab"] {
             background-color: var(--card-bg) !important;
             color: var(--text-color) !important;
             border-radius: 8px !important;
-            border: 1px solid var(--accent-color) !important;
-            padding: 8px 16px !important;
+            border: 1px solid var(--border-color) !important;
+            padding: 12px 24px !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .stTabs [data-baseweb="tab"]:hover {
+            border-color: var(--accent-color) !important;
+            background-color: var(--input-bg) !important;
         }
 
         .stTabs [aria-selected="true"] {
-            background-color: var(--accent-color) !important;
+            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-dark) 100%) !important;
             color: white !important;
+            border: none !important;
         }
 
         /* Progress bars and spinners */
         .stProgress > div > div > div > div {
-            background-color: var(--accent-color) !important;
+            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-dark) 100%) !important;
         }
 
         /* Download button */
         .stDownloadButton > button {
-            background-color: var(--accent-color) !important;
+            background: linear-gradient(135deg, var(--accent-dark) 0%, var(--accent-color) 100%) !important;
             color: white !important;
             border: none !important;
             border-radius: 8px !important;
-            padding: 0.5rem 1rem !important;
+            padding: 0.6rem 1.5rem !important;
             font-weight: 600 !important;
+            letter-spacing: 0.02em !important;
             transition: all 0.2s ease !important;
+            text-transform: uppercase !important;
+            font-size: 0.9rem !important;
         }
 
         .stDownloadButton > button:hover {
-            background-color: var(--hover-color) !important;
+            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%) !important;
             transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(229, 57, 53, 0.2) !important;
         }
 
         /* Warning messages */
         .stAlert {
             background-color: var(--card-bg) !important;
             color: var(--text-color) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 8px !important;
+        }
+
+        /* Divider */
+        hr {
+            border-color: var(--border-color) !important;
+            margin: 2rem 0 !important;
         }
     </style>
 """, unsafe_allow_html=True)
