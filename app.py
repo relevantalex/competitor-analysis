@@ -25,12 +25,27 @@ logger = logging.getLogger(__name__)
 st.set_page_config(
     page_title="Venture Studio Competitor Analysis",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    menu_items={
+        'Get Help': 'https://github.com/yourusername/competitor-analysis',
+        'Report a bug': "https://github.com/yourusername/competitor-analysis/issues",
+        'About': "Competitor Analysis Tool v1.0"
+    }
 )
 
 # Initialize session state
 if 'search_history' not in st.session_state:
     st.session_state.search_history = []
+
+def get_brave_time_range(period: str) -> Optional[str]:
+    """Convert time period to Brave API format"""
+    time_ranges = {
+        "Last Month": "past_month",
+        "Last 3 Months": "past_3_months",
+        "Last 6 Months": "past_6_months",
+        "Last Year": "past_year"
+    }
+    return time_ranges.get(period)
 
 @st.cache_resource
 def initialize_nltk():
@@ -48,54 +63,12 @@ def initialize_nltk():
             return False
     return True
 
-# Custom CSS with modern styling
-st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        html, body, [class*="css"] {
-            font-family: 'Inter', sans-serif !important;
-        }
-        
-        .stButton>button {
-            background-color: #4CAF50 !important;
-            color: white !important;
-            font-family: 'Inter', sans-serif !important;
-            border-radius: 8px !important;
-            transition: all 0.3s ease;
-        }
-        
-        .stButton>button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
-        }
-        
-        .competitor-card {
-            padding: 24px;
-            border-radius: 12px;
-            background-color: #ffffff;
-            margin: 16px 0;
-            border-left: 5px solid #4CAF50;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-        
-        .sentiment-box {
-            padding: 24px;
-            border-radius: 12px;
-            margin: 16px 0;
-            background-color: #ffffff;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-def validate_api_key() -> bool:
-    """Validate the presence of the Brave API key"""
-    if 'brave_api_key' not in st.secrets:
-        st.error("Missing Brave API key in secrets.")
-        st.info("Add your API key to Streamlit secrets with key 'brave_api_key'")
-        return False
-    return True
+@st.cache_data
+def clean_text(text: str) -> str:
+    """Clean and normalize text"""
+    text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
+    text = re.sub(r'[^\w\s]', '', text)
+    return text.lower().strip()
 
 @st.cache_data(ttl=3600)
 def brave_search(query: str, time_period: str, api_key: str) -> pd.DataFrame:
@@ -107,11 +80,14 @@ def brave_search(query: str, time_period: str, api_key: str) -> pd.DataFrame:
         'Accept': 'application/json',
     }
     
+    time_range = get_brave_time_range(time_period)
     params = {
         'q': query,
-        'count': '20',
-        'time_range': get_brave_time_range(time_period)
+        'count': '20'
     }
+    
+    if time_range:
+        params['time_range'] = time_range
     
     try:
         with st.spinner('Searching for competitor data...'):
@@ -152,10 +128,49 @@ def get_sentiment(text: str) -> float:
         logger.error(f"Sentiment analysis failed: {str(e)}")
         return 0.0
 
+def display_analysis_results(df: pd.DataFrame, startup_name: str):
+    """Display analysis results with visualizations"""
+    if df.empty:
+        st.warning("No data available for analysis.")
+        return
+
+    # Sentiment Analysis
+    avg_sentiment = df['sentiment'].mean()
+    st.subheader("📊 Sentiment Analysis")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        fig_sentiment = px.line(df, 
+                              x=df.index, 
+                              y='sentiment',
+                              title='Sentiment Trend',
+                              labels={'sentiment': 'Sentiment Score', 'index': 'Article Number'})
+        st.plotly_chart(fig_sentiment)
+    
+    with col2:
+        sentiment_dist = px.histogram(df, 
+                                    x='sentiment',
+                                    title='Sentiment Distribution',
+                                    nbins=20)
+        st.plotly_chart(sentiment_dist)
+
+    # Display Results Table
+    st.subheader("📑 Detailed Results")
+    st.dataframe(
+        df[['title', 'sentiment', 'link']].style.format({
+            'sentiment': '{:.2f}'
+        })
+    )
+
 def main():
     st.title("Venture Studio Competitor Analysis")
     
-    if not validate_api_key() or not initialize_nltk():
+    if not initialize_nltk():
+        return
+    
+    if 'brave_api_key' not in st.secrets:
+        st.error("Missing Brave API key. Please add it to your Streamlit secrets.")
         return
     
     # Input section with improved validation
@@ -190,17 +205,16 @@ def main():
         
         # Perform analysis
         try:
-            with st.spinner('Analyzing competitors...'):
-                df = brave_search(
-                    f"{startup_name} {pitch}",
-                    time_period,
-                    st.secrets["brave_api_key"]
-                )
-                
-                if not df.empty:
-                    display_analysis_results(df, startup_name)
-                else:
-                    st.warning("No competitor data found. Try adjusting your search terms.")
+            df = brave_search(
+                f"{startup_name} {pitch}",
+                time_period,
+                st.secrets["brave_api_key"]
+            )
+            
+            if not df.empty:
+                display_analysis_results(df, startup_name)
+            else:
+                st.warning("No competitor data found. Try adjusting your search terms.")
                     
         except Exception as e:
             logger.error(f"Analysis failed: {str(e)}")
