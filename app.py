@@ -143,26 +143,53 @@ st.markdown("""
         
         /* Form field styling */
         .stTextInput > div:hover,
-        .stTextArea > div:hover {
+        .stTextArea > div:hover,
+        .stMultiSelect > div:hover {
             border-color: #E01955 !important;
         }
         
         .stTextInput > div > div > input:focus,
-        .stTextArea > div > div > textarea:focus {
+        .stTextArea > div > div > textarea:focus,
+        .stMultiSelect > div:focus {
             border-color: #E01955 !important;
             box-shadow: 0 0 0 1px #E01955 !important;
         }
-        
+
         /* Form icons (dropdown and clear) */
         .stTextInput [data-baseweb="icon"],
-        .stSelectbox [data-baseweb="icon"] {
+        .stSelectbox [data-baseweb="icon"],
+        .stMultiSelect [data-baseweb="icon"] {
             color: #000000 !important;
         }
-        
-        /* Analyze Market button hover */
-        .stButton > button:hover {
+
+        /* Multiselect chips */
+        .stMultiSelect [data-baseweb="tag"] {
             background-color: #E01955 !important;
-            opacity: 0.9;
+            color: white !important;
+        }
+        
+        .stMultiSelect [data-baseweb="tag"]:hover {
+            background-color: #C01745 !important;
+        }
+
+        /* Analyze Market button and line */
+        .stButton > button {
+            width: 100%;
+            background-color: #E01955 !important;
+            color: white !important;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem !important;
+            border: none !important;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            border-bottom: 2px solid #E01955 !important;
+        }
+        
+        .stButton > button:hover {
+            background-color: #C01745 !important;
+            transform: translateY(-1px);
+            border-bottom-color: #C01745 !important;
         }
         
         /* Override any remaining focus/selection colors */
@@ -346,32 +373,52 @@ def main():
         submitted = st.form_submit_button("Analyze Market")
 
     if submitted and startup_name and pitch:
-        # Create tabs for filtering
-        tab_cols = st.columns(2)
-        with tab_cols[0]:
-            col1_tabs = st.tabs(["All", "Restaurant Management"])
-        with tab_cols[1]:
-            col2_tabs = st.tabs(["Hospitality Security", "Food Service Analytics"])
+        # Industry filter with multiselect
+        available_industries = list(set(comp["industry"] for comp in MOCK_COMPETITORS))
+        selected_industries = st.multiselect(
+            "Filter by Industry",
+            available_industries,
+            default=available_industries,
+            help="Select industries to filter (you can select multiple)"
+        )
+
+        # Display filtered competitors in two columns
+        col1, col2 = st.columns(2)
         
-        # Get the active tab index
-        if 'active_tab' not in st.session_state:
-            st.session_state.active_tab = 0
+        # Filter competitors
+        filtered_competitors = [
+            comp for comp in MOCK_COMPETITORS 
+            if comp["industry"] in (selected_industries if selected_industries else available_industries)
+        ]
         
-        # Define tab indices
-        all_tab = col1_tabs[0]
-        restaurant_tab = col1_tabs[1]
-        security_tab = col2_tabs[0]
-        analytics_tab = col2_tabs[1]
-        
-        # Filter competitors based on active tab
-        with all_tab:
-            filtered_competitors = MOCK_COMPETITORS
-        with restaurant_tab:
-            filtered_competitors = [comp for comp in MOCK_COMPETITORS if comp["industry"] == "Restaurant Management Solutions"]
-        with security_tab:
-            filtered_competitors = [comp for comp in MOCK_COMPETITORS if comp["industry"] == "Hospitality Security Systems"]
-        with analytics_tab:
-            filtered_competitors = [comp for comp in MOCK_COMPETITORS if comp["industry"] == "Food Service Analytics"]
+        # Display competitors in two columns
+        for i, competitor in enumerate(filtered_competitors):
+            with col1 if i % 2 == 0 else col2:
+                st.markdown(f"""
+                    <div class="competitor-card">
+                        <div class="card-header">
+                            <h2 class="company-name">{competitor['name']}</h2>
+                            <p class="company-industry">{competitor['industry']}</p>
+                        </div>
+                        <div class="card-content">
+                            <p class="description-text">{competitor['description']}</p>
+                            <div>
+                                <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Key Differentiator</h3>
+                                <p class="description-text" style="margin-bottom: 1rem;">{competitor['keyDifferentiator']}</p>
+                            </div>
+                            <a href="{competitor['website']}" target="_blank" class="website-link">
+                                Visit Website
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" 
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
+                                     stroke-linejoin="round" style="margin-left: 0.5rem;">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
         
         # Display competitors
         for competitor in filtered_competitors:
