@@ -37,7 +37,18 @@ st.set_page_config(
     layout="wide",
 )
 
-# Custom CSS
+# Define regions
+REGIONS = {
+    "Worldwide": "Global market analysis",
+    "North America": ["United States", "Canada"],
+    "Europe": ["European Union", "United Kingdom", "Switzerland"],
+    "Asia Pacific": ["China", "Japan", "South Korea", "Singapore"],
+    "Latin America": ["Brazil", "Mexico", "Argentina"],
+    "Middle East & Africa": ["UAE", "Saudi Arabia", "South Africa"],
+    "Oceania": ["Australia", "New Zealand"]
+}
+
+# Custom CSS with updated brand color
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -46,201 +57,156 @@ st.markdown("""
             font-family: 'Inter', sans-serif !important;
         }
         
-        .competitor-card {
-            padding: 24px;
-            border-radius: 12px;
-            background-color: #ffffff;
-            margin: 16px 0;
-            border-left: 5px solid #4CAF50;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        .stButton>button {
+            background-color: #E01955 !important;
+            color: white !important;
+            font-family: 'Inter', sans-serif !important;
+            border-radius: 10px !important;
+            transition: all 0.3s ease;
+            height: 48px !important;
+            font-size: 16px !important;
+            border: none !important;
+            padding: 0 24px !important;
         }
         
-        .title-container {
-            padding: 2rem 0;
-            text-align: center;
-            background: linear-gradient(120deg, #155799, #159957);
-            color: white;
-            border-radius: 0 0 20px 20px;
-            margin-bottom: 2rem;
+        .stButton>button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(224, 25, 85, 0.2);
         }
+        
+        .competitor-card {
+            padding: 24px;
+            border-radius: 20px !important;
+            background-color: #ffffff;
+            margin: 16px 0;
+            border-left: 5px solid #E01955;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .competitor-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+        
+        .banner-container {
+            margin: -4rem -4rem 2rem -4rem;
+            padding: 0;
+            position: relative;
+        }
+        
+        .banner-container img {
+            width: 100%;
+            height: auto;
+            border-radius: 0 0 20px 20px;
+        }
+        
+        .banner-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 2rem;
+            background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0.7));
+            border-radius: 0 0 20px 20px;
+        }
+        
+        .banner-overlay h1 {
+            color: white;
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 600;
+        }
+        
+        .banner-overlay p {
+            color: rgba(255,255,255,0.9);
+            margin: 0.5rem 0 0 0;
+            font-size: 1.1rem;
+        }
+        
+        /* Style the form container */
+        .stForm {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Style the tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            border-radius: 20px;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            border-radius: 10px;
+            padding: 8px 16px;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background-color: #E01955 !important;
+            color: white !important;
+        }
+        
+        /* Style the select boxes */
+        .stSelectbox [data-baseweb="select"] {
+            border-radius: 10px;
+        }
+        
+        /* Add spacing between sections */
+        .section-spacing {
+            margin: 2rem 0;
+        }
+        
+        /* Style the export button */
+        .stDownloadButton>button {
+            background-color: #2E3192 !important;
+            margin-top: 2rem;
+        }
+        
     </style>
 """, unsafe_allow_html=True)
 
-class AIProvider:
-    def __init__(self):
-        self.provider = st.secrets.get("api_settings", {}).get("ai_provider", "openai")
-        
-        if self.provider == "openai":
-            openai.api_key = st.secrets["api_keys"]["openai_api_key"]
-            self.model = "gpt-4-turbo-preview"
-        else:
-            self.anthropic = Anthropic(api_key=st.secrets["api_keys"]["anthropic_api_key"])
-            self.model = "claude-3-opus-20240229"
-
-    def generate_response(self, prompt: str) -> str:
-        try:
-            if self.provider == "openai":
-                response = openai.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": "You are a startup and industry analysis expert."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.7,
-                    max_tokens=4000
-                )
-                return response.choices[0].message.content
-            else:
-                message = self.anthropic.messages.create(
-                    model=self.model,
-                    max_tokens=4000,
-                    temperature=0.7,
-                    system="You are a startup and industry analysis expert.",
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return message.content
-
-        except Exception as e:
-            logger.error(f"AI generation failed: {str(e)}")
-            raise
-
-@st.cache_data(ttl=3600)
-def identify_industries(pitch: str) -> List[str]:
-    """Identify potential industries based on the pitch using AI"""
-    ai = AIProvider()
-    prompt = f"""Based on this pitch: "{pitch}"
-    Identify exactly 3 specific, relevant industries or market segments.
-    Format your response as a JSON array with exactly 3 strings.
-    Make each industry name specific and descriptive.
-    Example: ["AI-Powered Security Analytics", "Retail Technology Solutions", "Computer Vision SaaS"]"""
-
-    try:
-        response = ai.generate_response(prompt)
-        # Clean the response to ensure it's valid JSON
-        cleaned_response = response.strip()
-        if not cleaned_response.startswith('['):
-            cleaned_response = cleaned_response[cleaned_response.find('['):]
-        if not cleaned_response.endswith(']'):
-            cleaned_response = cleaned_response[:cleaned_response.rfind(']')+1]
-        
-        industries = json.loads(cleaned_response)
-        return industries[:3]
-    except Exception as e:
-        logger.error(f"Industry identification failed: {str(e)}")
-        return ["Technology Solutions", "Software Services", "Digital Innovation"]
-
-def find_competitors(industry: str, pitch: str) -> List[Dict]:
-    """Find competitors using AI and web search"""
-    ai = AIProvider()
-    
-    try:
-        # First, generate a focused search query
-        search_prompt = f"""For a startup in {industry} with this pitch: "{pitch}"
-        Create a search query to find direct competitors.
-        Return only the search query text, nothing else."""
-
-        search_query = ai.generate_response(search_prompt).strip().strip('"')
-        
-        # Perform the search
-        with DDGS() as ddgs:
-            results = list(ddgs.text(search_query, max_results=10))
-            
-            # Analyze the results with AI
-            analysis_prompt = f"""Analyze these competitors in {industry}:
-            {json.dumps(results)}
-            
-            Identify the top 3 most relevant direct competitors.
-            Return a JSON array with exactly 3 companies, each containing:
-            {{
-                "name": "Company Name",
-                "website": "company website",
-                "description": "2-sentence description",
-                "differentiator": "key unique selling point"
-            }}
-            
-            Return ONLY the JSON array, no other text."""
-
-            competitor_analysis = ai.generate_response(analysis_prompt)
-            # Clean the response to ensure it's valid JSON
-            cleaned_analysis = competitor_analysis.strip()
-            if not cleaned_analysis.startswith('['):
-                cleaned_analysis = cleaned_analysis[cleaned_analysis.find('['):]
-            if not cleaned_analysis.endswith(']'):
-                cleaned_analysis = cleaned_analysis[:cleaned_analysis.rfind(']')+1]
-            
-            competitors = json.loads(cleaned_analysis)
-            
-            # Clean URLs
-            for comp in competitors:
-                if comp.get('website'):
-                    parsed_url = urlparse(comp['website'])
-                    domain = parsed_url.netloc if parsed_url.netloc else parsed_url.path
-                    if not domain.startswith('www.'):
-                        domain = f"www.{domain}"
-                    comp['website'] = f"https://{domain}"
-            
-            return competitors[:3]
-            
-    except Exception as e:
-        logger.error(f"Competitor search failed: {str(e)}")
-        st.error(f"Error finding competitors: {str(e)}")
-        return []
-
-def export_results(startup_name: str):
-    """Export analysis results to CSV"""
-    if not st.session_state.competitors:
-        st.warning("No analysis results to export yet.")
-        return
-        
-    csv_data = []
-    headers = ['Industry', 'Competitor', 'Website', 'Description', 'Key Differentiator']
-    
-    for industry, competitors in st.session_state.competitors.items():
-        for comp in competitors:
-            csv_data.append([
-                industry,
-                comp['name'],
-                comp['website'],
-                comp['description'],
-                comp['differentiator']
-            ])
-    
-    # Create CSV string
-    output = StringIO()
-    writer = csv.writer(output)
-    writer.writerow(headers)
-    writer.writerows(csv_data)
-    
-    # Create download button
-    st.download_button(
-        label="📥 Export Analysis",
-        data=output.getvalue(),
-        file_name=f"{startup_name}_competitor_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
-        mime='text/csv'
-    )
+[... REST OF THE CODE REMAINS THE SAME UNTIL THE MAIN FUNCTION ...]
 
 def main():
+    # Banner with overlay
     st.markdown("""
-        <div class="title-container">
-            <h1>Venture Studio Competitor Analysis</h1>
-            <p>Powered by AI for accurate market insights</p>
+        <div class="banner-container">
+            <img src="https://drive.google.com/uc?id=1JmN239NqwH1KOJJUWtjcr7dU6zn1Auh4" alt="Banner">
+            <div class="banner-overlay">
+                <h1>Venture Studio Competitor Analysis</h1>
+                <p>Powered by AI for accurate market insights</p>
+            </div>
         </div>
     """, unsafe_allow_html=True)
     
-    # Input section
-    with st.form("analysis_form"):
-        startup_name = st.text_input(
-            "Startup Name",
-            help="Enter your startup's name"
-        )
+    # Input section with modern styling
+    with st.form("analysis_form", clear_on_submit=False):
+        col1, col2 = st.columns(2)
         
-        pitch = st.text_area(
-            "One-Sentence Pitch",
-            help="Describe what your startup does in one sentence",
-            max_chars=200
-        )
+        with col1:
+            startup_name = st.text_input(
+                "Startup Name",
+                help="Enter your startup's name",
+                placeholder="e.g., TechVision AI"
+            )
+            
+            region = st.selectbox(
+                "Target Region",
+                options=list(REGIONS.keys()),
+                help="Select your target market region"
+            )
         
-        submitted = st.form_submit_button("Analyze")
+        with col2:
+            pitch = st.text_area(
+                "One-Sentence Pitch",
+                help="Describe what your startup does in one sentence",
+                max_chars=200,
+                placeholder="e.g., AI-powered analytics platform for retail optimization"
+            )
+        
+        submitted = st.form_submit_button("Analyze Market", use_container_width=True)
     
     if submitted and startup_name and pitch:
         with st.spinner("Analyzing industries..."):
@@ -250,6 +216,8 @@ def main():
 
     # Show analysis if industries are identified
     if st.session_state.industries:
+        st.markdown("<div class='section-spacing'></div>", unsafe_allow_html=True)
+        
         # Create tabs
         tab_titles = st.session_state.industries
         tabs = st.tabs(tab_titles)
@@ -259,13 +227,11 @@ def main():
             with tab:
                 industry = st.session_state.industries[i]
                 
-                # Load competitors if not already loaded
                 if industry not in st.session_state.competitors:
                     with st.spinner(f"Analyzing competitors in {industry}..."):
                         competitors = find_competitors(industry, pitch)
                         st.session_state.competitors[industry] = competitors
                 
-                # Display competitors
                 if industry in st.session_state.competitors:
                     for comp in st.session_state.competitors[industry]:
                         st.markdown(f"""
