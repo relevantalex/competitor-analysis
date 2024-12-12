@@ -141,6 +141,44 @@ st.markdown("""
             line-height: 1.5;
         }
         
+        /* Override multiselect styles */
+        .stMultiSelect > div[data-baseweb="select"] > div {
+            background-color: #E01955 !important;
+            color: white !important;
+        }
+        
+        .stMultiSelect div[role="option"]:hover {
+            background-color: rgba(224, 25, 85, 0.1) !important;
+            color: #E01955 !important;
+        }
+        
+        .stMultiSelect [data-testid="stMultiSelect"] div[role="option"][data-highlighted="true"] {
+            background-color: rgba(224, 25, 85, 0.1) !important;
+            color: #E01955 !important;
+        }
+        
+        .stMultiSelect [data-baseweb="tag"] {
+            background-color: #E01955 !important;
+            color: white !important;
+        }
+        
+        .stMultiSelect [data-baseweb="tag"]:hover {
+            background-color: #C01745 !important;
+        }
+        
+        .stMultiSelect [data-baseweb="icon"] {
+            color: white !important;
+        }
+        
+        /* Override any remaining green focus/selection colors */
+        *:focus {
+            outline-color: #E01955 !important;
+        }
+        
+        *::selection {
+            background-color: rgba(224, 25, 85, 0.2) !important;
+        }
+        
         /* Tabs styling */
         .stTabs [data-baseweb="tab-list"] {
             gap: 0.5rem;
@@ -289,19 +327,25 @@ def main():
         submitted = st.form_submit_button("Analyze Market")
 
     if submitted and startup_name and pitch:
-        # Industry filter with multiselect
+        # Industry filter with multiselect that maintains state
         available_industries = list(set(comp["industry"] for comp in MOCK_COMPETITORS))
+        if 'selected_industries' not in st.session_state:
+            st.session_state.selected_industries = available_industries
+            
         selected_industries = st.multiselect(
             "Filter by Industry",
             available_industries,
-            default=available_industries,
+            default=st.session_state.selected_industries,
             help="Select industries to filter (you can select multiple)"
         )
+        
+        # Update session state
+        st.session_state.selected_industries = selected_industries if selected_industries else available_industries
         
         # Display filtered competitors
         filtered_competitors = [
             comp for comp in MOCK_COMPETITORS 
-            if comp["industry"] in selected_industries
+            if comp["industry"] in (selected_industries if selected_industries else available_industries)
         ]
         
         # Display competitors
